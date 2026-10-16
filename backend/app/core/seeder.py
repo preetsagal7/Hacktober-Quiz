@@ -83,23 +83,42 @@ async def seed_database(db: AsyncSession):
         existing = await db.execute(
             select(AdminUser).where(AdminUser.admin_id == settings.INITIAL_ADMIN_ID)
         )
-        if not existing.scalar_one_or_none():
-            admin = AdminUser(
-                admin_id=settings.INITIAL_ADMIN_ID,
-                hashed_password=hash_password(settings.INITIAL_ADMIN_PASSWORD),
-                display_name="Event Administrator",
-                must_change_password=True,  # Require password change on first login
-                is_active=True,
-            )
-            db.add(admin)
-            await db.flush()
-            logger.info(
-                "Bootstrap admin created. Admin ID: %s. "
-                "IMPORTANT: Change the password immediately after first login.",
-                settings.INITIAL_ADMIN_ID,
-            )
+        admin = existing.scalar_one_or_none()
+        if not admin:
+            # Check if any admin already exists in the database
+            any_admin = await db.execute(select(AdminUser))
+            existing_admin = any_admin.scalars().first()
+            if existing_admin:
+                existing_admin.admin_id = settings.INITIAL_ADMIN_ID
+                existing_admin.hashed_password = hash_password(settings.INITIAL_ADMIN_PASSWORD)
+                existing_admin.must_change_password = False
+                existing_admin.is_active = True
+                await db.flush()
+                logger.info(
+                    "Admin credentials synced with settings. Admin ID: %s",
+                    settings.INITIAL_ADMIN_ID,
+                )
+            else:
+                admin = AdminUser(
+                    admin_id=settings.INITIAL_ADMIN_ID,
+                    hashed_password=hash_password(settings.INITIAL_ADMIN_PASSWORD),
+                    display_name="Event Administrator",
+                    must_change_password=False,
+                    is_active=True,
+                )
+                db.add(admin)
+                await db.flush()
+                logger.info(
+                    "Bootstrap admin created. Admin ID: %s.",
+                    settings.INITIAL_ADMIN_ID,
+                )
         else:
-            logger.info("Admin user already exists. Skipping bootstrap.")
+            # Keep credentials synced to settings
+            admin.hashed_password = hash_password(settings.INITIAL_ADMIN_PASSWORD)
+            admin.must_change_password = False
+            admin.is_active = True
+            await db.flush()
+            logger.info("Admin credentials verified/synced with settings.")
 
     # ─── Event ───
     existing_event = await db.execute(select(Event).where(Event.is_active == True))
