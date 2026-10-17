@@ -276,6 +276,11 @@ export const updateParticipantEligibility = async (
   return res.data;
 };
 
+export const deleteParticipant = async (id: string): Promise<{ message: string }> => {
+  const res = await api.delete(`/admin/participants/${id}`);
+  return res.data;
+};
+
 export const getAdminQuestions = async (roundId?: string, topic?: string, search?: string): Promise<AdminQuestion[]> => {
   const params: Record<string, any> = {};
   if (roundId) params.round_id = roundId;

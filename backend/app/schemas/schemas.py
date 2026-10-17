@@ -48,6 +48,18 @@ class ParticipantEntryRequest(BaseModel):
         return v.strip().upper()
 
 
+class ParticipantScoreInfo(BaseModel):
+    round_id: str
+    round_number: int
+    round_name: str
+    score: float
+    status: str
+    correct_count: int
+    incorrect_count: int
+    unanswered_count: int
+    submitted_at: Optional[datetime] = None
+
+
 class ParticipantOut(BaseModel):
     id: str
     usn: str
@@ -58,8 +70,15 @@ class ParticipantOut(BaseModel):
     is_eligible: bool
     is_verified: bool
     session_token: Optional[str] = None
+    scores: List[ParticipantScoreInfo] = []
+    total_score: float = 0.0
 
     model_config = {"from_attributes": True}
+
+
+class ParticipantEligibilityUpdate(BaseModel):
+    is_eligible: bool
+    reason: Optional[str] = None
 
 
 class ParticipantSessionResponse(BaseModel):
@@ -184,6 +203,8 @@ class RoundOut(BaseModel):
     started_at: Optional[datetime]
     closed_at: Optional[datetime]
     results_published_at: Optional[datetime]
+    my_attempt_status: Optional[str] = None
+    my_score: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

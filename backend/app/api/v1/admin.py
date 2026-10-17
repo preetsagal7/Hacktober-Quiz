@@ -26,7 +26,8 @@ from app.schemas.schemas import (
     QuestionCreate, QuestionUpdate, QuestionAdminOut, AnswerOptionAdminOut,
     ParticipantOut, ParticipantListResponse, ParticipantImportResult,
     RulesVersionOut, RulesVersionCreate, AnnouncementOut, AnnouncementCreate,
-    MessageResponse, LeaderboardEntry, RoundLeaderboard
+    MessageResponse, LeaderboardEntry, RoundLeaderboard,
+    ParticipantScoreInfo, ParticipantEligibilityUpdate
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -143,13 +144,105 @@ async def list_participants(
     result = await db.execute(query)
     participants = result.scalars().all()
 
+    p_ids = [p.id for p in participants]
+    attempts_map = {}
+    if p_ids:
+        att_res = await db.execute(
+            select(Attempt, Round)
+            .join(Round, Attempt.round_id == Round.id)
+            .where(Attempt.participant_id.in_(p_ids))
+            .order_by(Round.round_number)
+        )
+        for att, rnd in att_res.all():
+            if att.participant_id not in attempts_map:
+                attempts_map[att.participant_id] = []
+            attempts_map[att.participant_id].append(
+                ParticipantScoreInfo(
+                    round_id=rnd.id,
+                    round_number=rnd.round_number,
+                    round_name=rnd.name,
+                    score=att.score or 0.0,
+                    status=att.status.value,
+                    correct_count=att.correct_count or 0,
+                    incorrect_count=att.incorrect_count or 0,
+                    unanswered_count=att.unanswered_count or 0,
+                    submitted_at=att.submitted_at,
+                )
+            )
+
+    items = []
+    for p in participants:
+        p_scores = attempts_map.get(p.id, [])
+        total_score = sum(s.score for s in p_scores)
+        out = ParticipantOut.model_validate(p)
+        out.scores = p_scores
+        out.total_score = total_score
+        items.append(out)
+
     return ParticipantListResponse(
-        items=[ParticipantOut.model_validate(p) for p in participants],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
         pages=pages,
     )
+
+
+@router.put("/participants/{participant_id}/eligibility", response_model=MessageResponse)
+async def update_participant_eligibility(
+    participant_id: str,
+    body: ParticipantEligibilityUpdate,
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle or update participant eligibility (revoking or restoring access)."""
+    result = await db.execute(select(Participant).where(Participant.id == participant_id))
+    participant = result.scalar_one_or_none()
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found.")
+
+    participant.is_eligible = body.is_eligible
+    participant.ineligibility_reason = body.reason if not body.is_eligible else None
+    if not body.is_eligible:
+        participant.session_token = None
+
+    await _audit(admin.id, "participant_eligibility_updated", "participant", participant_id, db,
+                 details=json.dumps({"is_eligible": body.is_eligible, "reason": body.reason}))
+    await db.commit()
+    return MessageResponse(
+        message=f"Participant {participant.usn} eligibility updated to {'eligible' if body.is_eligible else 'revoked'}."
+    )
+
+
+@router.delete("/participants/{participant_id}", response_model=MessageResponse)
+async def delete_participant(
+    participant_id: str,
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a participant and all their associated exam records."""
+    result = await db.execute(select(Participant).where(Participant.id == participant_id))
+    participant = result.scalar_one_or_none()
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found.")
+
+    usn = participant.usn
+    # Delete dependent records
+    att_res = await db.execute(select(Attempt.id).where(Attempt.participant_id == participant_id))
+    att_ids = att_res.scalars().all()
+    if att_ids:
+        await db.execute(delete(Answer).where(Answer.attempt_id.in_(att_ids)))
+    await db.execute(delete(Violation).where(Violation.participant_id == participant_id))
+    await db.execute(delete(Qualification).where(Qualification.participant_id == participant_id))
+    await db.execute(delete(Appeal).where(Appeal.participant_id == participant_id))
+    await db.execute(delete(Certificate).where(Certificate.participant_id == participant_id))
+    await db.execute(delete(ParticipantConsent).where(ParticipantConsent.participant_id == participant_id))
+    await db.execute(delete(Attempt).where(Attempt.participant_id == participant_id))
+    await db.delete(participant)
+
+    await _audit(admin.id, "participant_deleted", "participant", participant_id, db, details=json.dumps({"usn": usn}))
+    await db.commit()
+    return MessageResponse(message=f"Participant {usn} and all associated records deleted successfully.")
 
 
 @router.post("/participants/import", response_model=ParticipantImportResult)
@@ -417,17 +510,35 @@ async def pause_round(
     return RoundOut.model_validate(round_)
 
 
+@router.post("/rounds/{round_id}/publish-results", response_model=MessageResponse)
 @router.post("/rounds/{round_id}/qualify", response_model=MessageResponse)
 async def compute_qualification(
     round_id: str,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Compute and store qualifications for a closed round."""
+    """Compute and store qualifications and publish official results."""
     result = await db.execute(select(Round).where(Round.id == round_id))
     round_ = result.scalar_one_or_none()
-    if not round_ or round_.status != RoundStatus.CLOSED:
-        raise HTTPException(status_code=400, detail="Round must be CLOSED to compute qualifications.")
+    if not round_:
+        raise HTTPException(status_code=404, detail="Round not found.")
+
+    if round_.status == RoundStatus.OPEN:
+        round_.status = RoundStatus.CLOSED
+        round_.closed_at = datetime.now(timezone.utc)
+        # Finalize any in-progress attempts
+        in_progress_result = await db.execute(
+            select(Attempt).where(
+                and_(Attempt.round_id == round_id, Attempt.status == AttemptStatus.IN_PROGRESS)
+            )
+        )
+        from app.api.v1.quiz import _finalize_attempt
+        for attempt in in_progress_result.scalars().all():
+            attempt.status = AttemptStatus.SUBMITTED
+            attempt.submitted_at = datetime.now(timezone.utc)
+            await _finalize_attempt(attempt, round_, db)
+    elif round_.status not in (RoundStatus.CLOSED, RoundStatus.RESULTS_PUBLISHED):
+        raise HTTPException(status_code=400, detail=f"Cannot publish results for round in '{round_.status.value}' state. Open or close the round first.")
 
     # Get all submitted/timed-out attempts ordered by score desc
     attempts_result = await db.execute(
@@ -493,23 +604,42 @@ async def get_leaderboard(
     rows = quals_result.all()
 
     entries = []
-    for qual, participant in rows:
-        # Get correct count
-        attempt_result = await db.execute(
-            select(Attempt).where(
-                and_(Attempt.participant_id == participant.id, Attempt.round_id == round_id)
-            )
+    if not rows:
+        # Fallback to attempts directly if qualifications haven't been computed yet
+        att_res = await db.execute(
+            select(Attempt, Participant)
+            .join(Participant, Attempt.participant_id == Participant.id)
+            .where(Attempt.round_id == round_id)
+            .order_by(desc(Attempt.score), Attempt.submitted_at)
         )
-        attempt = attempt_result.scalar_one_or_none()
-        entries.append(LeaderboardEntry(
-            rank=qual.rank,
-            participant_id=participant.id,
-            usn=participant.usn,
-            name=participant.name,
-            score=qual.score,
-            correct_count=attempt.correct_count if attempt else 0,
-            is_qualified=qual.is_qualified,
-        ))
+        for rank, (att, p) in enumerate(att_res.all(), start=1):
+            entries.append(LeaderboardEntry(
+                rank=rank,
+                participant_id=p.id,
+                usn=p.usn,
+                name=p.name,
+                score=att.score or 0.0,
+                correct_count=att.correct_count or 0,
+                is_qualified=False,
+            ))
+    else:
+        for qual, participant in rows:
+            # Get correct count
+            attempt_result = await db.execute(
+                select(Attempt).where(
+                    and_(Attempt.participant_id == participant.id, Attempt.round_id == round_id)
+                )
+            )
+            attempt = attempt_result.scalar_one_or_none()
+            entries.append(LeaderboardEntry(
+                rank=qual.rank,
+                participant_id=participant.id,
+                usn=participant.usn,
+                name=participant.name,
+                score=qual.score,
+                correct_count=attempt.correct_count if attempt else 0,
+                is_qualified=qual.is_qualified,
+            ))
 
     return RoundLeaderboard(
         round_id=round_id,
@@ -929,17 +1059,25 @@ async def list_appeals(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Appeal).order_by(desc(Appeal.created_at)))
-    appeals = result.scalars().all()
+    result = await db.execute(
+        select(Appeal, Participant)
+        .outerjoin(Participant, Appeal.participant_id == Participant.id)
+        .order_by(desc(Appeal.created_at))
+    )
+    rows = result.all()
     return [
         {
             "id": a.id,
             "participant_id": a.participant_id,
+            "usn": p.usn if p else "UNKNOWN",
+            "name": p.name if p else "Student",
             "subject": a.subject,
+            "description": a.description,
             "status": a.status.value,
-            "created_at": a.created_at,
+            "admin_response": a.admin_response,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
         }
-        for a in appeals
+        for a, p in rows
     ]
 
 
@@ -1021,11 +1159,15 @@ async def reset_test_data(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Clean all attempts, answers, violations, and reset rounds to PENDING."""
+    """Clean all participants, attempts, answers, violations, appeals, and reset rounds to PENDING."""
     await db.execute(delete(Answer))
     await db.execute(delete(Violation))
     await db.execute(delete(Qualification))
+    await db.execute(delete(Appeal))
+    await db.execute(delete(Certificate))
+    await db.execute(delete(ParticipantConsent))
     await db.execute(delete(Attempt))
+    await db.execute(delete(Participant))
     # Reset all rounds to PENDING
     rounds_res = await db.execute(select(Round))
     for r in rounds_res.scalars().all():
@@ -1034,7 +1176,7 @@ async def reset_test_data(
         r.closed_at = None
         r.results_published_at = None
     await db.commit()
-    return MessageResponse(message="Tournament overview reset: 0 attempts, 0 violations, all rounds PENDING.")
+    return MessageResponse(message="Tournament reset complete: all participants and attempts removed, all rounds set to PENDING.")
 
 
 # ─── Audit Logs ───

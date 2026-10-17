@@ -36,6 +36,7 @@ import {
   getAdminParticipants,
   importParticipantsCSV,
   updateParticipantEligibility,
+  deleteParticipant,
   getAdminQuestions,
   createQuestion,
   updateQuestion,
@@ -218,11 +219,12 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const handlePublishResults = async (id: string) => {
-    if (confirm('Publish official results and leaderboard for this round?')) {
+    if (confirm('Publish official results and leaderboard for this round? This will compute qualifications and release rankings.')) {
       try {
-        await publishRoundResults(id);
+        const res = await publishRoundResults(id);
+        alert(res.message || 'Results have been published and are now visible on the public leaderboard.');
         checkAuthAndLoad();
-        alert('Results have been published and are now visible on the public leaderboard.');
+        getAdminRounds().then(setRounds);
       } catch (err: any) {
         alert(err.response?.data?.detail || 'Failed to publish results.');
       }
@@ -230,10 +232,14 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const handleResetOverviewData = async () => {
-    if (confirm('Reset tournament test attempts and violations? Live attempts, answers, and violations will be cleared to 0 and rounds reset to PENDING.')) {
+    if (confirm('Reset entire tournament data? All participants, attempts, answers, violations, and appeals will be cleared to 0 and rounds reset to PENDING.')) {
       try {
         const res = await resetTestData();
         alert(res.message);
+        setParticipants([]);
+        setPartTotal(0);
+        setViolations([]);
+        setAppeals([]);
         checkAuthAndLoad();
       } catch (err: any) {
         alert(err.response?.data?.detail || 'Failed to reset data.');
@@ -265,20 +271,42 @@ export const AdminDashboardPage: React.FC = () => {
         setParticipants(r.items);
         setPartTotal(r.total);
       });
+      getAdminDashboard().then(setStats);
     } catch (err: any) {
       alert(err.response?.data?.detail || 'CSV Import failed. Check CSV format.');
     }
   };
 
-  // Toggle Eligibility
+  // Toggle Eligibility (Revoke / Restore Access)
   const handleToggleEligibility = async (p: Participant) => {
     const nextStatus = !p.is_eligible;
-    const reason = nextStatus ? 'Re-enabled by admin' : prompt('Enter reason for disqualifying/disabling USN:');
-    if (!nextStatus && !reason) return;
-    await updateParticipantEligibility(p.id, nextStatus, reason || undefined);
-    setParticipants(
-      participants.map((item) => (item.id === p.id ? { ...item, is_eligible: nextStatus } : item))
-    );
+    const action = nextStatus ? 'Restore' : 'Revoke';
+    if (!confirm(`Are you sure you want to ${action.toLowerCase()} examination access for USN: ${p.usn}?`)) return;
+    const reason = nextStatus ? 'Re-enabled by admin' : 'Access revoked by committee';
+    try {
+      await updateParticipantEligibility(p.id, nextStatus, reason);
+      setParticipants(
+        participants.map((item) => (item.id === p.id ? { ...item, is_eligible: nextStatus } : item))
+      );
+      getAdminDashboard().then(setStats);
+      alert(`Access has been ${nextStatus ? 'restored' : 'revoked'} for USN ${p.usn}.`);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to update participant eligibility.');
+    }
+  };
+
+  // Delete Participant
+  const handleDeleteParticipant = async (p: Participant) => {
+    if (!confirm(`Are you sure you want to permanently delete participant ${p.usn} (${p.name || 'Student'}) and all their quiz data?`)) return;
+    try {
+      await deleteParticipant(p.id);
+      setParticipants(participants.filter((item) => item.id !== p.id));
+      setPartTotal((prev) => Math.max(0, prev - 1));
+      getAdminDashboard().then(setStats);
+      alert(`Participant ${p.usn} deleted successfully.`);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete participant.');
+    }
   };
 
   // Start Editing a Question
@@ -692,7 +720,8 @@ export const AdminDashboardPage: React.FC = () => {
                   <tr>
                     <th>USN</th>
                     <th>Name</th>
-                    <th>Department</th>
+                    <th>Department & College</th>
+                    <th>Marks / Score</th>
                     <th>Eligibility</th>
                     <th>Action</th>
                   </tr>
@@ -702,22 +731,70 @@ export const AdminDashboardPage: React.FC = () => {
                     <tr key={p.id}>
                       <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{p.usn}</td>
                       <td>{p.name || 'Registered Student'}</td>
-                      <td>{p.department || 'CSE - IoT & Cyber'}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{p.department || 'Not specified'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {p.college_name || 'Guru Nanak Dev Engineering College'}
+                        </div>
+                      </td>
+                      <td>
+                        {p.scores && p.scores.length > 0 ? (
+                          <div>
+                            <div style={{ fontWeight: 800, color: 'var(--navy)', fontSize: '0.95rem' }}>
+                              {p.total_score ?? 0} Pts
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                              {p.scores.map((sc) => (
+                                <span
+                                  key={sc.round_id}
+                                  className="badge badge--blue"
+                                  style={{ fontSize: '0.72rem', padding: '2px 6px' }}
+                                  title={`Round ${sc.round_number}: ${sc.correct_count} correct, ${sc.incorrect_count} incorrect (${sc.status})`}
+                                >
+                                  R{sc.round_number}: {sc.score} pts
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                            No exam taken
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <span className={`badge ${p.is_eligible ? 'badge--emerald' : 'badge--crimson'}`}>
                           {p.is_eligible ? 'Eligible' : 'Ineligible'}
                         </span>
                       </td>
                       <td>
-                        <button
-                          onClick={() => handleToggleEligibility(p)}
-                          className={`btn btn--xs ${p.is_eligible ? 'btn--danger' : 'btn--success'}`}
-                        >
-                          {p.is_eligible ? 'Revoke Access' : 'Restore Access'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleToggleEligibility(p)}
+                            className={`btn btn--xs ${p.is_eligible ? 'btn--danger' : 'btn--success'}`}
+                            title={p.is_eligible ? 'Revoke participant examination access' : 'Restore participant examination access'}
+                          >
+                            {p.is_eligible ? 'Revoke Access' : 'Restore Access'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteParticipant(p)}
+                            className="btn btn--ghost btn--xs"
+                            style={{ color: 'var(--crimson)' }}
+                            title="Permanently remove participant"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
+                  {participants.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        No participants registered yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1096,24 +1173,29 @@ export const AdminDashboardPage: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {appeals.map((a) => (
                 <div key={a.id} className="card card--sm">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: '1rem' }}>
-                      {a.subject}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: '1.05rem' }}>
+                        {a.subject}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        From: <strong style={{ color: 'var(--blue)' }}>{a.name || 'Participant'}</strong> (USN: <span style={{ fontFamily: 'var(--font-mono)' }}>{a.usn || 'N/A'}</span>) • {a.created_at ? new Date(a.created_at).toLocaleString() : 'Recent'}
+                      </div>
                     </div>
-                    <span className={`badge ${a.status === 'resolved' ? 'badge--emerald' : 'badge--amber'}`}>
+                    <span className={`badge ${a.status === 'resolved' ? 'badge--emerald' : a.status === 'rejected' ? 'badge--crimson' : 'badge--amber'}`}>
                       {a.status.toUpperCase()}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '10px', background: 'var(--bg-surface)', padding: '10px 14px', borderRadius: '8px' }}>
                     {a.description}
                   </div>
 
-                  {a.status === 'submitted' && (
+                  {(a.status === 'pending' || a.status === 'submitted' || a.status === 'under_review') ? (
                     <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-light)', paddingTop: '12px' }}>
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="Write official committee response..."
+                        placeholder="Write committee resolution response message..."
                         value={appealReply.id === a.id ? appealReply.response : ''}
                         onChange={(e) => setAppealReply({ id: a.id, response: e.target.value })}
                         style={{ marginBottom: '8px' }}
@@ -1133,7 +1215,20 @@ export const AdminDashboardPage: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  )}
+                  ) : a.admin_response ? (
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        padding: '10px 14px',
+                        background: 'rgba(59,130,246,0.06)',
+                        borderLeft: '3px solid var(--blue)',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      <strong>Committee Response:</strong> {a.admin_response}
+                    </div>
+                  ) : null}
                 </div>
               ))}
               {appeals.length === 0 && (

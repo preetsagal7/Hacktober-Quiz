@@ -236,6 +236,9 @@ export const ParticipantDashboardPage: React.FC = () => {
         {rounds.map((round) => {
           const isOpen = round.status === 'open';
           const isClosed = round.status === 'closed' || round.status === 'results_published';
+          const attemptStatus = round.my_attempt_status;
+          const isCompleted = attemptStatus === 'submitted' || attemptStatus === 'timed_out' || attemptStatus === 'terminated';
+          const isInProgress = attemptStatus === 'in_progress';
 
           return (
             <div
@@ -244,7 +247,13 @@ export const ParticipantDashboardPage: React.FC = () => {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                border: isOpen ? '2px solid rgba(59,130,246,0.4)' : 'var(--border-light)',
+                border: isCompleted
+                  ? '2px solid rgba(16,185,129,0.3)'
+                  : isInProgress
+                  ? '2px solid rgba(245,158,11,0.4)'
+                  : isOpen
+                  ? '2px solid rgba(59,130,246,0.4)'
+                  : 'var(--border-light)',
                 boxShadow: isOpen ? 'var(--shadow-glow-blue)' : 'var(--shadow-nm-sm)',
               }}
             >
@@ -252,14 +261,22 @@ export const ParticipantDashboardPage: React.FC = () => {
                 <span className="badge badge--blue">Round {round.round_number}</span>
                 <span
                   className={`badge ${
-                    isOpen
+                    isCompleted
+                      ? 'badge--emerald'
+                      : isInProgress
+                      ? 'badge--amber'
+                      : isOpen
                       ? 'badge--emerald'
                       : round.status === 'paused'
                       ? 'badge--amber'
                       : 'badge--default'
                   }`}
                 >
-                  {round.status.toUpperCase().replace('_', ' ')}
+                  {isCompleted
+                    ? 'COMPLETED'
+                    : isInProgress
+                    ? 'IN PROGRESS'
+                    : round.status.toUpperCase().replace('_', ' ')}
                 </span>
               </div>
 
@@ -298,7 +315,25 @@ export const ParticipantDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              {isOpen ? (
+              {isCompleted ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn--secondary btn--full" disabled style={{ opacity: 0.9, cursor: 'default' }}>
+                    <CheckCircle2 size={16} color="var(--emerald)" />
+                    <span>Test Completed {round.my_score !== undefined && round.my_score !== null ? `(${round.my_score} Pts)` : ''}</span>
+                  </button>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    One test attempt per USN allowed. Your responses have been recorded.
+                  </div>
+                </div>
+              ) : isInProgress ? (
+                <button
+                  onClick={() => navigate(`/quiz/${round.id}`)}
+                  className="btn btn--primary btn--full"
+                >
+                  <Play size={16} />
+                  <span>Resume Examination</span>
+                </button>
+              ) : isOpen ? (
                 <button
                   onClick={() => navigate(`/quiz/${round.id}`)}
                   className="btn btn--primary btn--full"

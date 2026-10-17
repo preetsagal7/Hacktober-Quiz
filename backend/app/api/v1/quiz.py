@@ -52,7 +52,7 @@ async def get_rounds(
     participant: Participant = Depends(get_current_participant_with_consent),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get all rounds and their current status."""
+    """Get all rounds and their current status with participant's own attempt state."""
     from app.models import Event
     event_result = await db.execute(select(Event).where(Event.is_active == True))
     event = event_result.scalar_one_or_none()
@@ -63,7 +63,23 @@ async def get_rounds(
         select(Round).where(Round.event_id == event.id).order_by(Round.round_number)
     )
     rounds = result.scalars().all()
-    return [RoundOut.model_validate(r) for r in rounds]
+
+    # Get participant's attempts
+    attempts_res = await db.execute(
+        select(Attempt).where(Attempt.participant_id == participant.id)
+    )
+    attempts_map = {a.round_id: a for a in attempts_res.scalars().all()}
+
+    output = []
+    for r in rounds:
+        ro = RoundOut.model_validate(r)
+        att = attempts_map.get(r.id)
+        if att:
+            ro.my_attempt_status = att.status.value
+            ro.my_score = att.score
+        output.append(ro)
+
+    return output
 
 
 @router.get("/rounds/{round_id}", response_model=RoundOut)
@@ -76,7 +92,16 @@ async def get_round(
     round_ = result.scalar_one_or_none()
     if not round_:
         raise HTTPException(status_code=404, detail="Round not found.")
-    return RoundOut.model_validate(round_)
+
+    ro = RoundOut.model_validate(round_)
+    att_res = await db.execute(
+        select(Attempt).where(and_(Attempt.participant_id == participant.id, Attempt.round_id == round_id))
+    )
+    att = att_res.scalar_one_or_none()
+    if att:
+        ro.my_attempt_status = att.status.value
+        ro.my_score = att.score
+    return ro
 
 
 @router.post("/rounds/{round_id}/start", response_model=StartAttemptResponse)
@@ -134,7 +159,7 @@ async def start_attempt(
         elif existing.status in (AttemptStatus.SUBMITTED, AttemptStatus.TERMINATED, AttemptStatus.TIMED_OUT):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"You have already completed this round. Status: {existing.status.value}",
+                detail=f"You have already completed this test for USN {participant.usn} (Status: {existing.status.value}). Only one test attempt is permitted per USN.",
             )
 
     # Create new attempt

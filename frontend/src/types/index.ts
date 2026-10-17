@@ -44,6 +44,8 @@ export interface Round {
   started_at?: string;
   closed_at?: string;
   results_published_at?: string;
+  my_attempt_status?: string;
+  my_score?: number;
 }
 
 export interface AnswerOption {
@@ -77,6 +79,18 @@ export interface AdminQuestion extends Question {
   updated_at: string;
 }
 
+export interface ParticipantScoreInfo {
+  round_id: string;
+  round_number: number;
+  round_name: string;
+  score: number;
+  status: string;
+  correct_count: number;
+  incorrect_count: number;
+  unanswered_count: number;
+  submitted_at?: string;
+}
+
 export interface Participant {
   id: string;
   usn: string;
@@ -87,6 +101,8 @@ export interface Participant {
   is_eligible: boolean;
   is_verified: boolean;
   session_token?: string;
+  scores?: ParticipantScoreInfo[];
+  total_score?: number;
 }
 
 export interface ParticipantSessionResponse {
@@ -165,6 +181,9 @@ export interface RoundLeaderboard {
 
 export interface Appeal {
   id: string;
+  participant_id?: string;
+  usn?: string;
+  name?: string;
   subject: string;
   description: string;
   status: string;
