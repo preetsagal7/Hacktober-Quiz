@@ -558,8 +558,9 @@ export const QuizArenaPage: React.FC = () => {
 
             {/* Answer Options */}
             <div className="options-grid">
-              {currentQuestion.options.map((opt) => {
+              {currentQuestion.options.map((opt, optIndex) => {
                 const isSelected = selectedAnswers[currentQuestion.id] === opt.id;
+                const displayLabel = String.fromCharCode(65 + optIndex);
                 return (
                   <button
                     key={opt.id}
@@ -567,7 +568,7 @@ export const QuizArenaPage: React.FC = () => {
                     onClick={() => handleSelectOption(opt.id)}
                     className={`option-btn ${isSelected ? 'option-btn--selected' : ''}`}
                   >
-                    <div className="option-label">{opt.option_label}</div>
+                    <div className="option-label">{displayLabel}</div>
                     <div className="option-text">{opt.option_text}</div>
                   </button>
                 );

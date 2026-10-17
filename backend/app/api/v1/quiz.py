@@ -263,11 +263,12 @@ async def _get_attempt_questions(
         else:
             opts_ordered = sorted(all_opts.values(), key=lambda o: o.display_order)
 
-        # Build without correct answer
+        # Build without correct answer, assigning sequential labels A, B, C, D in order
+        LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"]
         options_out = [
             AnswerOptionOut(
                 id=o.id,
-                option_label=o.option_label,
+                option_label=LABELS[i] if i < len(LABELS) else chr(65 + i),
                 option_text=o.option_text,
                 display_order=i,
             )
