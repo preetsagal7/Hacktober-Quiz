@@ -82,6 +82,7 @@ export interface Participant {
   usn: string;
   name?: string;
   department?: string;
+  college_name?: string;
   semester?: string;
   is_eligible: boolean;
   is_verified: boolean;

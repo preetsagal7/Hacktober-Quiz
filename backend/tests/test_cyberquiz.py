@@ -69,7 +69,8 @@ async def test_admin_bootstrap_login(client: AsyncClient):
 @pytest.mark.anyio
 async def test_participant_workflow(client: AsyncClient):
     # 1. Entry with USN
-    test_usn = "3GN22CS999"
+    import uuid
+    test_usn = f"3GN22CS{uuid.uuid4().hex[:4].upper()}"
     res = await client.post(
         "/api/v1/participant/entry",
         json={"usn": test_usn.lower()},  # Should normalize to uppercase
@@ -104,7 +105,8 @@ async def test_participant_workflow(client: AsyncClient):
 @pytest.mark.anyio
 async def test_quiz_attempt_autosave_and_violation(client: AsyncClient):
     # Create fresh participant
-    test_usn = "3GN22CS888"
+    import uuid
+    test_usn = f"3GN22CS{uuid.uuid4().hex[:4].upper()}"
     entry_res = await client.post("/api/v1/participant/entry", json={"usn": test_usn})
     token = entry_res.json()["session_token"]
     headers = {"Authorization": f"Bearer {token}"}

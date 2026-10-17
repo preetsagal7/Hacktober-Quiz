@@ -139,6 +139,7 @@ class Participant(Base):
     name: Mapped[Optional[str]] = mapped_column(String(200))
     email: Mapped[Optional[str]] = mapped_column(String(200))
     department: Mapped[Optional[str]] = mapped_column(String(200))
+    college_name: Mapped[Optional[str]] = mapped_column(String(300))
     semester: Mapped[Optional[str]] = mapped_column(String(10))
     is_eligible: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)

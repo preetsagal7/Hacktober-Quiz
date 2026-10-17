@@ -35,6 +35,16 @@ async def get_db():
 
 
 async def init_db():
-    """Create all tables."""
+    """Create all tables and perform lightweight column migrations if needed."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        def _migrate(sync_conn):
+            from sqlalchemy import inspect, text
+            inspector = inspect(sync_conn)
+            if inspector.has_table("participants"):
+                columns = [c["name"] for c in inspector.get_columns("participants")]
+                if "college_name" not in columns:
+                    sync_conn.execute(text("ALTER TABLE participants ADD COLUMN college_name VARCHAR(300)"))
+
+        await conn.run_sync(_migrate)

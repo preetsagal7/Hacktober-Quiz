@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { Shield, ArrowRight, AlertCircle, User, GraduationCap, Building } from 'lucide-react';
 import { participantEntry } from '../services/api';
 
 interface ParticipantEntryPageProps {
@@ -9,15 +9,34 @@ interface ParticipantEntryPageProps {
 
 export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
+  const [name, setName] = useState('');
   const [usn, setUsn] = useState('');
+  const [department, setDepartment] = useState('');
+  const [collegeName, setCollegeName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsn = usn.trim().toUpperCase();
+    const cleanName = name.trim();
+    const cleanDept = department.trim();
+    const cleanCollege = collegeName.trim();
+
+    if (!cleanName) {
+      setError('Please enter your full name.');
+      return;
+    }
     if (!cleanUsn) {
       setError('Please enter a valid USN or College Roll Number.');
+      return;
+    }
+    if (!cleanDept) {
+      setError('Please enter your department / branch.');
+      return;
+    }
+    if (!cleanCollege) {
+      setError('Please enter your college name.');
       return;
     }
 
@@ -25,15 +44,23 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
     setError(null);
 
     try {
-      const res = await participantEntry(cleanUsn);
+      const res = await participantEntry({
+        usn: cleanUsn,
+        name: cleanName,
+        department: cleanDept,
+        college_name: cleanCollege,
+      });
       localStorage.setItem('participant_token', res.session_token);
       localStorage.setItem('participant_usn', res.participant.usn);
+      if (res.participant.name) {
+        localStorage.setItem('participant_name', res.participant.name);
+      }
       onLoginSuccess(res.participant.usn);
       navigate('/dashboard');
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
-        'Unable to enter competition. Please verify your USN or contact the student coordinators.'
+        'Unable to enter competition. Please verify your details or contact the student coordinators.'
       );
     } finally {
       setLoading(false);
@@ -42,8 +69,8 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
 
   return (
     <div className="page-wrapper page-wrapper--narrow">
-      <div className="card" style={{ padding: '40px', marginTop: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+      <div className="card" style={{ padding: '40px', marginTop: '30px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div
             style={{
               width: '64px',
@@ -63,7 +90,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
             Participant Portal
           </h1>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-            Enter your official GNDEC University Seat Number (USN) or Roll Number to access the examination arena.
+            Enter your details and official USN / Roll Number to access the examination arena.
           </p>
         </div>
 
@@ -87,10 +114,27 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.9rem' }}>
-              University Seat Number (USN) / College Roll Number
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <User size={15} color="var(--blue)" />
+              <span>Full Name</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. Rahul Sharma"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Shield size={15} color="var(--blue)" />
+              <span>University Seat Number (USN) / College Roll Number</span>
             </label>
             <input
               type="text"
@@ -98,20 +142,49 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
               placeholder="e.g. 3GN22CS001"
               value={usn}
               onChange={(e) => setUsn(e.target.value.toUpperCase())}
-              autoFocus
               required
-              style={{ fontSize: '1.1rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}
+              style={{ fontSize: '1.05rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}
             />
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               Format is case-insensitive. Eligible registered students will be admitted immediately.
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <GraduationCap size={15} color="var(--blue)" />
+              <span>Department / Branch</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. CSE - IoT & Cybersecurity"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building size={15} color="var(--blue)" />
+              <span>College Name</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. Guru Nanak Dev Engineering College, Bidar"
+              value={collegeName}
+              onChange={(e) => setCollegeName(e.target.value)}
+              required
+            />
           </div>
 
           <button
             type="submit"
             className="btn btn--primary btn--lg btn--full"
             disabled={loading}
-            style={{ marginTop: '24px' }}
+            style={{ marginTop: '8px' }}
           >
             {loading ? (
               <span>Validating Eligibility...</span>

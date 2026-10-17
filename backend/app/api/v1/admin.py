@@ -177,6 +177,7 @@ async def import_participants(
         roll = (row.get("roll_number") or row.get("Roll") or "").strip() or None
         email = (row.get("email") or row.get("Email") or "").strip() or None
         dept = (row.get("department") or row.get("Department") or "").strip() or None
+        college = (row.get("college_name") or row.get("college") or row.get("College") or "").strip() or None
         sem = (row.get("semester") or row.get("Semester") or "").strip() or None
 
         try:
@@ -192,6 +193,8 @@ async def import_participants(
                     existing.email = email
                 if dept:
                     existing.department = dept
+                if college:
+                    existing.college_name = college
                 if sem:
                     existing.semester = sem
                 existing.is_eligible = True
@@ -199,7 +202,7 @@ async def import_participants(
             else:
                 p = Participant(
                     usn=usn, name=name, roll_number=roll, email=email,
-                    department=dept, semester=sem, is_eligible=True,
+                    department=dept, college_name=college, semester=sem, is_eligible=True,
                 )
                 db.add(p)
                 imported += 1

@@ -35,19 +35,30 @@ async def participant_entry(
     result = await db.execute(select(Participant).where(Participant.usn == usn))
     participant = result.scalar_one_or_none()
 
-    if not participant:
-        # Allow auto-registration if no roster enforcement (can be toggled)
-        event_result = await db.execute(select(Event).where(Event.is_active == True))
-        event = event_result.scalar_one_or_none()
+    name_clean = body.name.strip() if body.name and body.name.strip() else None
+    dept_clean = body.department.strip() if body.department and body.department.strip() else None
+    college_clean = body.college_name.strip() if body.college_name and body.college_name.strip() else None
 
+    if not participant:
         # Auto-create with basic info
         participant = Participant(
             usn=usn,
+            name=name_clean,
+            department=dept_clean,
+            college_name=college_clean,
             is_eligible=True,
             is_verified=False,
         )
         db.add(participant)
         await db.flush()
+    else:
+        # Update details if provided
+        if name_clean:
+            participant.name = name_clean
+        if dept_clean:
+            participant.department = dept_clean
+        if college_clean:
+            participant.college_name = college_clean
 
     if not participant.is_eligible:
         raise HTTPException(

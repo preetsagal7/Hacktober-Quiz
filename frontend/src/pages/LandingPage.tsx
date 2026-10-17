@@ -64,7 +64,7 @@ export const LandingPage: React.FC = () => {
 
             <div className="hero__actions">
               <Link to="/entry" className="btn btn--primary btn--xl">
-                <span>Enter Quiz with USN</span>
+                <span>Enter Quiz</span>
                 <ArrowRight size={20} />
               </Link>
               <Link to="/rules" className="btn btn--secondary btn--xl">

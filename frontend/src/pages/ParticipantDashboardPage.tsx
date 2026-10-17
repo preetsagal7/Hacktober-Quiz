@@ -127,10 +127,12 @@ export const ParticipantDashboardPage: React.FC = () => {
               Participant Verified
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--navy)', margin: '2px 0 4px' }}>
-              USN: {participant?.usn}
+              {participant?.name || `USN: ${participant?.usn}`}
             </h1>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Guru Nanak Dev Engineering College, Bidar • Competition Arena
+              {participant?.name && <span><strong>USN:</strong> {participant.usn} • </span>}
+              {participant?.department && <span>{participant.department} • </span>}
+              <span>{participant?.college_name || 'Guru Nanak Dev Engineering College, Bidar'}</span>
             </div>
           </div>
         </div>

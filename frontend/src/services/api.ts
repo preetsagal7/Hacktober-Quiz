@@ -67,9 +67,18 @@ export const getPublicLeaderboard = async (roundId: string): Promise<RoundLeader
   return res.data;
 };
 
-// ─── Participant API ───
-export const participantEntry = async (usn: string): Promise<ParticipantSessionResponse> => {
-  const res = await api.post<ParticipantSessionResponse>('/participant/entry', { usn });
+export interface ParticipantEntryPayload {
+  usn: string;
+  name?: string;
+  department?: string;
+  college_name?: string;
+}
+
+export const participantEntry = async (
+  payload: string | ParticipantEntryPayload
+): Promise<ParticipantSessionResponse> => {
+  const body = typeof payload === 'string' ? { usn: payload } : payload;
+  const res = await api.post<ParticipantSessionResponse>('/participant/entry', body);
   return res.data;
 };
 
