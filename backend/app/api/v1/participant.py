@@ -200,8 +200,8 @@ async def submit_appeal(
     appeal = Appeal(
         participant_id=participant.id,
         attempt_id=body.attempt_id,
-        subject=body.subject,
-        description=body.description,
+        subject=body.subject.strip(),
+        description=body.description.strip(),
     )
     db.add(appeal)
     await db.commit()

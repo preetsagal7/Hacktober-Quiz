@@ -66,18 +66,38 @@ export const ParticipantDashboardPage: React.FC = () => {
 
   const handleAppealSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!appealSubject || !appealDesc) return;
+    const subject = appealSubject.trim();
+    const desc = appealDesc.trim();
+    if (!subject || !desc) {
+      alert('Please provide both a subject and a description for your appeal.');
+      return;
+    }
     setAppealSubmitting(true);
     setAppealSuccess(null);
     try {
-      const newAppeal = await submitAppeal(appealSubject, appealDesc);
-      setAppeals([newAppeal, ...appeals]);
+      const newAppeal = await submitAppeal(subject, desc);
+      setAppeals((prev) => [newAppeal, ...prev]);
       setAppealSubject('');
       setAppealDesc('');
       setShowAppealForm(false);
       setAppealSuccess('Your appeal has been submitted for administrative review.');
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to submit appeal.');
+      let errorMsg = 'Failed to submit appeal. Please try again.';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (Array.isArray(detail)) {
+          errorMsg = detail
+            .map((item: any) => item.msg || (typeof item === 'string' ? item : JSON.stringify(item)))
+            .join('\n');
+        } else if (typeof detail === 'object') {
+          errorMsg = detail.msg || JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      alert(errorMsg);
     } finally {
       setAppealSubmitting(false);
     }

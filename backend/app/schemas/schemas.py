@@ -408,9 +408,15 @@ class AnnouncementCreate(BaseModel):
 # ─── Appeals ───
 
 class AppealCreate(BaseModel):
-    subject: str = Field(..., min_length=5, max_length=300)
-    description: str = Field(..., min_length=20)
+    subject: str = Field(..., min_length=1, max_length=300)
+    description: str = Field(..., min_length=1, max_length=5000)
     attempt_id: Optional[str] = None
+
+
+class AppealResolve(BaseModel):
+    status: str = "resolved"
+    admin_response: Optional[str] = None
+    response: Optional[str] = None
 
 
 class AppealOut(BaseModel):
@@ -418,7 +424,8 @@ class AppealOut(BaseModel):
     subject: str
     description: str
     status: str
-    admin_response: Optional[str]
+    admin_response: Optional[str] = None
+    participant_id: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

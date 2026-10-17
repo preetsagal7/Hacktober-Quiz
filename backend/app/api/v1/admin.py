@@ -27,7 +27,7 @@ from app.schemas.schemas import (
     ParticipantOut, ParticipantListResponse, ParticipantImportResult,
     RulesVersionOut, RulesVersionCreate, AnnouncementOut, AnnouncementCreate,
     MessageResponse, LeaderboardEntry, RoundLeaderboard,
-    ParticipantScoreInfo, ParticipantEligibilityUpdate
+    ParticipantScoreInfo, ParticipantEligibilityUpdate, AppealResolve
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -1081,10 +1081,12 @@ async def list_appeals(
     ]
 
 
+@router.put("/appeals/{appeal_id}")
 @router.patch("/appeals/{appeal_id}")
 async def resolve_appeal(
     appeal_id: str,
-    status: str,
+    body: Optional[AppealResolve] = None,
+    status: Optional[str] = None,
     response: Optional[str] = None,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -1093,16 +1095,25 @@ async def resolve_appeal(
     appeal = result.scalar_one_or_none()
     if not appeal:
         raise HTTPException(status_code=404, detail="Appeal not found.")
+
+    target_status = (body.status if body and body.status else status) or "resolved"
+    reply_message = (body.admin_response if (body and body.admin_response is not None) else (body.response if body else response))
+
     try:
-        appeal.status = AppealStatus(status)
+        appeal.status = AppealStatus(target_status)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
-    appeal.admin_response = response
+        raise HTTPException(status_code=400, detail=f"Invalid status: {target_status}")
+    appeal.admin_response = reply_message
     appeal.resolved_by_id = admin.id
     appeal.resolved_at = datetime.now(timezone.utc)
     await _audit(admin.id, "appeal_resolved", "appeal", appeal_id, db)
     await db.commit()
-    return {"success": True}
+    return {
+        "success": True,
+        "id": appeal.id,
+        "status": appeal.status.value if hasattr(appeal.status, "value") else str(appeal.status),
+        "admin_response": appeal.admin_response
+    }
 
 
 # ─── Violations Review ───

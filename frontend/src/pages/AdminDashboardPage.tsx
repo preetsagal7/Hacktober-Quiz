@@ -404,17 +404,23 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Respond to Appeal
   const handleRespondAppeal = async (appealId: string, status: 'resolved' | 'rejected') => {
-    if (!appealReply.response) {
+    const responseText = appealReply.response.trim();
+    if (!responseText) {
       alert('Please enter a response message.');
       return;
     }
-    await respondAppeal(appealId, status, appealReply.response);
-    setAppeals(
-      appeals.map((a) =>
-        a.id === appealId ? { ...a, status, admin_response: appealReply.response } : a
-      )
-    );
-    setAppealReply({ id: '', response: '' });
+    try {
+      await respondAppeal(appealId, status, responseText);
+      setAppeals(
+        appeals.map((a) =>
+          a.id === appealId ? { ...a, status, admin_response: responseText } : a
+        )
+      );
+      setAppealReply({ id: '', response: '' });
+      alert(`Appeal marked as ${status}.`);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to update appeal status.');
+    }
   };
 
   if (loading) {
