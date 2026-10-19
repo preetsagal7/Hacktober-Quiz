@@ -49,6 +49,7 @@ import {
   createAnnouncement,
   adminLogout,
 } from '../services/api';
+import { supabase } from '../services/supabase';
 import {
   DashboardStats,
   Round,
@@ -175,9 +176,25 @@ export const AdminDashboardPage: React.FC = () => {
   }, [activeTab, partPage, partSearch, selectedRoundFilter]);
 
   const handleLogout = async () => {
-    await adminLogout().catch(() => {});
+    try {
+      await adminLogout().catch(() => {});
+    } catch {}
+    try {
+      await supabase.auth.signOut().catch(() => {});
+    } catch {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_id');
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {}
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     navigate('/');
   };
 
