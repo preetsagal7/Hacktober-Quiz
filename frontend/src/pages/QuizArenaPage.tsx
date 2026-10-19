@@ -427,41 +427,24 @@ export const QuizArenaPage: React.FC = () => {
 
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px',
               background: 'var(--bg-surface)',
-              padding: '20px',
+              padding: '24px',
               borderRadius: '12px',
               marginBottom: '32px',
+              border: '1px solid rgba(5,150,105,0.2)',
             }}
           >
-            <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>SCORE</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--blue)' }}>
-                {submissionResult.score !== null ? submissionResult.score : 'Pending'}
-              </div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--emerald)', marginBottom: '8px' }}>
+              Responses Recorded Successfully
             </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>CORRECT</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--emerald)' }}>
-                {submissionResult.correct_count}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>UNANSWERED</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>
-                {submissionResult.unanswered_count}
-              </div>
-            </div>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
+              Your answers have been securely submitted and logged on the server. The official results and evaluations will be announced by the event organizers after review.
+            </p>
           </div>
 
           <div style={{ display: 'flex', gap: '14px', justifyContent: 'center' }}>
-            <button onClick={() => navigate('/dashboard')} className="btn btn--secondary">
-              Back to Dashboard
-            </button>
-            <button onClick={() => navigate('/results')} className="btn btn--primary">
-              View Leaderboard
+            <button onClick={() => navigate('/dashboard')} className="btn btn--primary">
+              Return to Dashboard
             </button>
           </div>
         </div>

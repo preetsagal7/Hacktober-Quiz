@@ -339,7 +339,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <button className="btn btn--secondary btn--full" disabled style={{ opacity: 0.9, cursor: 'default' }}>
                     <CheckCircle2 size={16} color="var(--emerald)" />
-                    <span>Test Completed {round.my_score !== undefined && round.my_score !== null ? `(${round.my_score} Pts)` : ''}</span>
+                    <span>Test Completed</span>
                   </button>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                     One test attempt per USN allowed. Your responses have been recorded.

@@ -73,6 +73,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [partSearch, setPartSearch] = useState('');
   const [partPage, setPartPage] = useState(1);
   const [partTotal, setPartTotal] = useState(0);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [partError, setPartError] = useState<string | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<string | null>(null);
 
@@ -142,13 +144,25 @@ export const AdminDashboardPage: React.FC = () => {
     checkAuthAndLoad();
   }, []);
 
+  const loadParticipants = async (page = partPage, search = partSearch) => {
+    setLoadingParticipants(true);
+    setPartError(null);
+    try {
+      const res = await getAdminParticipants(page, 25, search);
+      setParticipants(res.items || []);
+      setPartTotal(res.total || 0);
+    } catch (err: any) {
+      console.error('Failed to load participants', err);
+      setPartError(err.response?.data?.detail || 'Failed to load participants from server.');
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
   // Tab data loader
   useEffect(() => {
     if (activeTab === 'participants') {
-      getAdminParticipants(partPage, 25, partSearch).then((res) => {
-        setParticipants(res.items);
-        setPartTotal(res.total);
-      });
+      loadParticipants(partPage, partSearch);
     } else if (activeTab === 'questions') {
       getAdminQuestions(selectedRoundFilter || undefined).then((res) => {
         setQuestions(res);
@@ -709,7 +723,26 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
+            {partError && (
+              <div
+                style={{
+                  padding: '10px 16px',
+                  background: 'rgba(220,38,38,0.08)',
+                  borderRadius: '8px',
+                  color: 'var(--crimson)',
+                  marginBottom: '16px',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <AlertCircle size={16} />
+                <span>{partError}</span>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input
                 type="text"
                 className="form-input"
@@ -718,6 +751,15 @@ export const AdminDashboardPage: React.FC = () => {
                 onChange={(e) => setPartSearch(e.target.value.toUpperCase())}
                 style={{ maxWidth: '360px' }}
               />
+              <button
+                onClick={() => loadParticipants(1, partSearch)}
+                className="btn btn--secondary btn--sm"
+                disabled={loadingParticipants}
+                title="Refresh participants list"
+              >
+                <RefreshCw size={14} className={loadingParticipants ? 'spin' : ''} />
+                <span>{loadingParticipants ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
             </div>
 
             <div className="data-table-wrapper">
@@ -794,13 +836,20 @@ export const AdminDashboardPage: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {participants.length === 0 && (
+                  {loadingParticipants ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        <RefreshCw size={18} className="spin" style={{ display: 'inline', marginRight: '8px' }} />
+                        Loading participants from server...
+                      </td>
+                    </tr>
+                  ) : participants.length === 0 ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                         No participants registered yet.
                       </td>
                     </tr>
-                  )}
+                  ) : null}
                 </tbody>
               </table>
             </div>

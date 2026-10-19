@@ -76,7 +76,8 @@ async def get_rounds(
         att = attempts_map.get(r.id)
         if att:
             ro.my_attempt_status = att.status.value
-            ro.my_score = att.score
+            # Do not show score to participants unless admin has published round results
+            ro.my_score = att.score if r.results_published_at is not None else None
         output.append(ro)
 
     return output
@@ -100,7 +101,8 @@ async def get_round(
     att = att_res.scalar_one_or_none()
     if att:
         ro.my_attempt_status = att.status.value
-        ro.my_score = att.score
+        # Do not show score to participants unless admin has published round results
+        ro.my_score = att.score if round_.results_published_at is not None else None
     return ro
 
 
@@ -381,12 +383,12 @@ async def submit_attempt(
     return SubmitAttemptResponse(
         attempt_id=attempt.id,
         status=attempt.status.value,
-        score=attempt.score,
-        correct_count=attempt.correct_count,
-        incorrect_count=attempt.incorrect_count,
-        unanswered_count=attempt.unanswered_count,
+        score=None,
+        correct_count=None,
+        incorrect_count=None,
+        unanswered_count=None,
         submitted_at=attempt.submitted_at,
-        message="Your submission has been recorded successfully.",
+        message="Your submission has been recorded successfully. Results will be announced after evaluation.",
     )
 
 

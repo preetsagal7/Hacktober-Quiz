@@ -139,9 +139,9 @@ export interface SubmitAttemptResponse {
   attempt_id: string;
   status: string;
   score?: number;
-  correct_count: number;
-  incorrect_count: number;
-  unanswered_count: number;
+  correct_count?: number;
+  incorrect_count?: number;
+  unanswered_count?: number;
   submitted_at: string;
   message: string;
 }

@@ -335,10 +335,10 @@ class SaveAnswerResponse(BaseModel):
 class SubmitAttemptResponse(BaseModel):
     attempt_id: str
     status: str
-    score: Optional[float]
-    correct_count: int
-    incorrect_count: int
-    unanswered_count: int
+    score: Optional[float] = None
+    correct_count: Optional[int] = None
+    incorrect_count: Optional[int] = None
+    unanswered_count: Optional[int] = None
     submitted_at: datetime
     message: str
 
