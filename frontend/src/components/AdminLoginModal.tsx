@@ -250,14 +250,32 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
-                Enter the <strong>6-digit code</strong> sent to <strong>{email}</strong>:
+              <div
+                style={{
+                  background: 'rgba(59,130,246,0.08)',
+                  border: '1px solid rgba(59,130,246,0.2)',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  marginBottom: '18px',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <div style={{ fontWeight: 700, color: 'var(--blue)', marginBottom: '4px' }}>
+                  Option 1: 1-Click Magic Link (Fastest)
+                </div>
+                <div style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  Open your Gmail tab and simply click the blue <strong>"Sign in"</strong> link. This page will automatically log you in!
+                </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '10px', textAlign: 'center' }}>
+                — OR ENTER 6-DIGIT CODE —
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '18px' }}>
                 <label className="form-label">
                   <KeyRound size={14} style={{ display: 'inline', marginRight: '6px' }} />
-                  Verification Code (OTP)
+                  6-Digit Login Code (if shown in email)
                 </label>
                 <input
                   type="text"
@@ -272,7 +290,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                     textAlign: 'center',
                     fontWeight: 700,
                   }}
-                  required
                   autoFocus
                 />
               </div>
@@ -280,16 +297,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               <button
                 type="submit"
                 className="btn btn--primary btn--full"
-                disabled={loading}
-                style={{ marginBottom: '12px' }}
+                disabled={loading || !otp.trim()}
+                style={{ marginBottom: '14px' }}
               >
                 {loading ? (
                   <>
                     <RefreshCw size={15} className="spin" />
-                    <span>Verifying...</span>
+                    <span>Verifying Code...</span>
                   </>
                 ) : (
-                  <span>Verify & Enter Admin Portal</span>
+                  <span>Verify Code & Enter Admin</span>
                 )}
               </button>
 
