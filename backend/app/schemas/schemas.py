@@ -39,6 +39,7 @@ class ChangePasswordRequest(BaseModel):
 class ParticipantEntryRequest(BaseModel):
     usn: str = Field(..., min_length=3, max_length=20)
     name: Optional[str] = Field(None, max_length=200)
+    email: Optional[str] = Field(None, max_length=200)
     department: Optional[str] = Field(None, max_length=200)
     college_name: Optional[str] = Field(None, max_length=300)
 
@@ -64,6 +65,7 @@ class ParticipantOut(BaseModel):
     id: str
     usn: str
     name: Optional[str] = None
+    email: Optional[str] = None
     department: Optional[str] = None
     college_name: Optional[str] = None
     semester: Optional[str] = None

@@ -795,7 +795,12 @@ export const AdminDashboardPage: React.FC = () => {
                   {participants.map((p) => (
                     <tr key={p.id}>
                       <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{p.usn}</td>
-                      <td>{p.name || 'Registered Student'}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{p.name || 'Registered Student'}</div>
+                        {p.email && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email}</div>
+                        )}
+                      </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{p.department || 'Not specified'}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>

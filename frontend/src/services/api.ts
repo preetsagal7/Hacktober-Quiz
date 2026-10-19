@@ -70,6 +70,7 @@ export const getPublicLeaderboard = async (roundId: string): Promise<RoundLeader
 export interface ParticipantEntryPayload {
   usn: string;
   name?: string;
+  email?: string;
   department?: string;
   college_name?: string;
 }

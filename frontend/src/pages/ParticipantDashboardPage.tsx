@@ -151,6 +151,7 @@ export const ParticipantDashboardPage: React.FC = () => {
             </h1>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               {participant?.name && <span><strong>USN:</strong> {participant.usn} • </span>}
+              {participant?.email && <span>{participant.email} • </span>}
               {participant?.department && <span>{participant.department} • </span>}
               <span>{participant?.college_name || 'Guru Nanak Dev Engineering College, Bidar'}</span>
             </div>

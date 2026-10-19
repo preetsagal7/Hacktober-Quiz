@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowRight, AlertCircle, User, GraduationCap, Building } from 'lucide-react';
+import { Shield, ArrowRight, AlertCircle, User, Mail, GraduationCap, Building } from 'lucide-react';
 import { participantEntry } from '../services/api';
 
 interface ParticipantEntryPageProps {
@@ -10,6 +10,7 @@ interface ParticipantEntryPageProps {
 export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [usn, setUsn] = useState('');
   const [department, setDepartment] = useState('');
   const [collegeName, setCollegeName] = useState('');
@@ -20,11 +21,16 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
     e.preventDefault();
     const cleanUsn = usn.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanDept = department.trim();
     const cleanCollege = collegeName.trim();
 
     if (!cleanName) {
       setError('Please enter your full name.');
+      return;
+    }
+    if (cleanEmail && !/\S+@\S+\.\S+/.test(cleanEmail)) {
+      setError('Please enter a valid email address (e.g. name@example.com).');
       return;
     }
     if (!cleanUsn) {
@@ -47,6 +53,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
       const res = await participantEntry({
         usn: cleanUsn,
         name: cleanName,
+        email: cleanEmail || undefined,
         department: cleanDept,
         college_name: cleanCollege,
       });
@@ -128,6 +135,21 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
               onChange={(e) => setName(e.target.value)}
               autoFocus
               required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Mail size={15} color="var(--blue)" />
+              <span>Email Address</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
+            </label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="e.g. rahul.sharma@gmail.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 

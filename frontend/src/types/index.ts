@@ -95,6 +95,7 @@ export interface Participant {
   id: string;
   usn: string;
   name?: string;
+  email?: string;
   department?: string;
   college_name?: string;
   semester?: string;
