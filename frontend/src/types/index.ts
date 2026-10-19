@@ -20,7 +20,9 @@ export interface Announcement {
   title: string;
   body: string;
   is_pinned: boolean;
+  is_published?: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Round {

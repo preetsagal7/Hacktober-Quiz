@@ -344,9 +344,52 @@ export const respondAppeal = async (id: string, status: string, adminResponse: s
   return res.data;
 };
 
+export const getAdminAnnouncements = async (): Promise<Announcement[]> => {
+  const res = await api.get<Announcement[]>('/admin/announcements');
+  return res.data;
+};
+
 export const createAnnouncement = async (title: string, body: string, isPinned = false): Promise<Announcement> => {
   const res = await api.post<Announcement>('/admin/announcements', { title, body, is_pinned: isPinned, is_published: true });
   return res.data;
+};
+
+export const updateAnnouncement = async (
+  id: string,
+  data: { title?: string; body?: string; is_pinned?: boolean; is_published?: boolean }
+): Promise<Announcement> => {
+  const res = await api.put<Announcement>(`/admin/announcements/${id}`, data);
+  return res.data;
+};
+
+export const deleteAnnouncement = async (id: string): Promise<{ message: string }> => {
+  const res = await api.delete<{ message: string }>(`/admin/announcements/${id}`);
+  return res.data;
+};
+
+export const downloadExcelReport = async (): Promise<void> => {
+  const res = await api.get('/admin/export/excel', {
+    responseType: 'blob',
+  });
+  const blob = new Blob([res.data], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const contentDisposition = res.headers['content-disposition'];
+  let filename = `CyberQuiz_Participants_and_Winners_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename=["']?([^"';]+)["']?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
 };
 
 export default api;

@@ -23,6 +23,10 @@ import {
   Edit2,
   RotateCcw,
   RefreshCw,
+  FileSpreadsheet,
+  Download,
+  Pin,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   getAdminDashboard,
@@ -46,7 +50,11 @@ import {
   resetTestData,
   getAdminAppeals,
   respondAppeal,
+  getAdminAnnouncements,
   createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  downloadExcelReport,
   adminLogout,
 } from '../services/api';
 import { supabase } from '../services/supabase';
@@ -56,6 +64,7 @@ import {
   Participant,
   AdminQuestion,
   Appeal,
+  Announcement,
 } from '../types';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -112,10 +121,23 @@ export const AdminDashboardPage: React.FC = () => {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [appealReply, setAppealReply] = useState<{ id: string; response: string }>({ id: '', response: '' });
 
-  // Announcement
+  // Announcements State
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
   const [annTitle, setAnnTitle] = useState('');
   const [annBody, setAnnBody] = useState('');
+  const [annPinned, setAnnPinned] = useState(false);
   const [annSuccess, setAnnSuccess] = useState<string | null>(null);
+
+  // Edit Announcement State
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editAnnTitle, setEditAnnTitle] = useState('');
+  const [editAnnBody, setEditAnnBody] = useState('');
+  const [editAnnPinned, setEditAnnPinned] = useState(false);
+  const [editAnnPublished, setEditAnnPublished] = useState(true);
+
+  // Excel Export State
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   const checkAuthAndLoad = async () => {
     const token = localStorage.getItem('admin_token');
@@ -160,6 +182,18 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const loadAnnouncements = async () => {
+    setLoadingAnnouncements(true);
+    try {
+      const res = await getAdminAnnouncements();
+      setAnnouncements(res || []);
+    } catch (err: any) {
+      console.error('Failed to load announcements', err);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
   // Tab data loader
   useEffect(() => {
     if (activeTab === 'participants') {
@@ -172,6 +206,8 @@ export const AdminDashboardPage: React.FC = () => {
       getAdminViolations().then((res) => setViolations(Array.isArray(res) ? res : (res as any).items ?? []));
     } else if (activeTab === 'appeals') {
       getAdminAppeals().then((res) => setAppeals(res));
+    } else if (activeTab === 'announcements') {
+      loadAnnouncements();
     }
   }, [activeTab, partPage, partSearch, selectedRoundFilter]);
 
@@ -423,13 +459,109 @@ export const AdminDashboardPage: React.FC = () => {
   // Post Announcement
   const handlePostAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!annTitle.trim() || !annBody.trim()) return;
     try {
-      await createAnnouncement(annTitle, annBody, true);
+      await createAnnouncement(annTitle.trim(), annBody.trim(), annPinned);
       setAnnSuccess('Announcement published to public landing page!');
       setAnnTitle('');
       setAnnBody('');
+      setAnnPinned(false);
+      loadAnnouncements();
+      setTimeout(() => setAnnSuccess(null), 4000);
     } catch (err: any) {
-      alert('Failed to publish announcement.');
+      alert(err.response?.data?.detail || 'Failed to publish announcement.');
+    }
+  };
+
+  // Start Editing Announcement
+  const handleStartEditAnnouncement = (ann: Announcement) => {
+    setEditingAnnouncement(ann);
+    setEditAnnTitle(ann.title);
+    setEditAnnBody(ann.body);
+    setEditAnnPinned(ann.is_pinned);
+    setEditAnnPublished(ann.is_published ?? true);
+    const formElem = document.getElementById('announcement-editor');
+    if (formElem) {
+      formElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const handleCancelEditAnnouncement = () => {
+    setEditingAnnouncement(null);
+    setEditAnnTitle('');
+    setEditAnnBody('');
+    setEditAnnPinned(false);
+    setEditAnnPublished(true);
+  };
+
+  // Save Edited Announcement
+  const handleSaveEditedAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAnnouncement) return;
+    if (!editAnnTitle.trim() || !editAnnBody.trim()) {
+      alert('Title and details cannot be empty.');
+      return;
+    }
+    try {
+      await updateAnnouncement(editingAnnouncement.id, {
+        title: editAnnTitle.trim(),
+        body: editAnnBody.trim(),
+        is_pinned: editAnnPinned,
+        is_published: editAnnPublished,
+      });
+      setAnnSuccess('Announcement updated successfully!');
+      setEditingAnnouncement(null);
+      loadAnnouncements();
+      setTimeout(() => setAnnSuccess(null), 4000);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to update announcement.');
+    }
+  };
+
+  // Delete Announcement
+  const handleDeleteAnnouncement = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete announcement "${title}"?`)) {
+      return;
+    }
+    try {
+      await deleteAnnouncement(id);
+      setAnnSuccess('Announcement deleted successfully.');
+      if (editingAnnouncement?.id === id) {
+        setEditingAnnouncement(null);
+      }
+      loadAnnouncements();
+      setTimeout(() => setAnnSuccess(null), 4000);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete announcement.');
+    }
+  };
+
+  // Download Excel Report
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadExcelReport();
+    } catch (err: any) {
+      console.error('Failed to download Excel report', err);
+      alert(err.response?.data?.detail || 'Failed to generate Excel report. Please try again.');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateStr;
     }
   };
 
@@ -554,13 +686,97 @@ export const AdminDashboardPage: React.FC = () => {
               <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
                 Tournament Overview & Health
               </h1>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  className="btn btn--sm"
+                  disabled={downloadingExcel}
+                  style={{
+                    background: 'linear-gradient(135deg, #059669, #10B981)',
+                    color: '#ffffff',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 4px rgba(5,150,105,0.2)',
+                  }}
+                  title="Download complete participants and winners Excel spreadsheet"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{downloadingExcel ? 'Exporting...' : 'Export Excel'}</span>
+                </button>
+                <button
+                  onClick={handleResetOverviewData}
+                  className="btn btn--secondary btn--sm"
+                  title="Clears test attempts/violations and resets rounds to PENDING"
+                >
+                  <RotateCcw size={15} />
+                  <span>Reset Live Counters</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Master Excel Report Card */}
+            <div
+              className="card"
+              style={{
+                padding: '20px 24px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(37,99,235,0.06))',
+                border: '1px solid rgba(5,150,105,0.25)',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                flexWrap: 'wrap',
+                gap: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '750px' }}>
+                <div
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '10px',
+                    background: '#059669',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    flexShrink: 0,
+                    boxShadow: '0 4px 10px rgba(5,150,105,0.25)',
+                  }}
+                >
+                  <FileSpreadsheet size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--navy)' }}>
+                    Participant Directory & Round Winners Excel Export (.xlsx)
+                  </div>
+                  <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '3px', lineHeight: 1.5 }}>
+                    Generate an instant multi-sheet Excel spreadsheet containing all participants with complete academic & contact information, individual round score cards, and official winners of every round.
+                  </div>
+                </div>
+              </div>
               <button
-                onClick={handleResetOverviewData}
-                className="btn btn--secondary btn--sm"
-                title="Clears test attempts/violations and resets rounds to PENDING"
+                type="button"
+                onClick={handleDownloadExcel}
+                className="btn btn--primary"
+                disabled={downloadingExcel}
+                style={{
+                  background: 'linear-gradient(135deg, #059669, #10B981)',
+                  borderColor: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(5,150,105,0.25)',
+                }}
               >
-                <RotateCcw size={15} />
-                <span>Reset Live Counters</span>
+                <Download size={16} className={downloadingExcel ? 'spin' : ''} />
+                <span>{downloadingExcel ? 'Generating Excel Sheet...' : 'Download Excel Sheet'}</span>
               </button>
             </div>
 
@@ -710,19 +926,42 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bulk CSV Upload (Phase 2) */}
-              <form onSubmit={handleCSVUpload} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  style={{ fontSize: '0.85rem' }}
-                />
-                <button type="submit" className="btn btn--secondary btn--sm" disabled={!csvFile}>
-                  <Upload size={14} />
-                  <span>Import CSV</span>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  className="btn btn--sm"
+                  disabled={downloadingExcel}
+                  style={{
+                    background: 'linear-gradient(135deg, #059669, #10B981)',
+                    color: '#ffffff',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 4px rgba(5,150,105,0.2)',
+                  }}
+                  title="Download complete participants details and round winners in Excel format"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{downloadingExcel ? 'Exporting...' : 'Export Excel Sheet'}</span>
                 </button>
-              </form>
+
+                {/* Bulk CSV Upload (Phase 2) */}
+                <form onSubmit={handleCSVUpload} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  <button type="submit" className="btn btn--secondary btn--sm" disabled={!csvFile}>
+                    <Upload size={14} />
+                    <span>Import CSV</span>
+                  </button>
+                </form>
+              </div>
             </div>
 
             {importResult && (
@@ -1320,52 +1559,301 @@ export const AdminDashboardPage: React.FC = () => {
         {/* ─── TAB: ANNOUNCEMENTS ─── */}
         {activeTab === 'announcements' && (
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--navy)', marginBottom: '24px' }}>
-              Publish Announcement
-            </h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
+                  Announcements & Notices
+                </h1>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Broadcast live notices directly onto the public landing page. Edit or update previous announcements below.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={loadAnnouncements}
+                className="btn btn--secondary btn--sm"
+                disabled={loadingAnnouncements}
+                title="Refresh previous announcements"
+              >
+                <RefreshCw size={14} className={loadingAnnouncements ? 'spin' : ''} />
+                <span>{loadingAnnouncements ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+            </div>
 
             {annSuccess && (
               <div
                 style={{
-                  padding: '12px 16px',
+                  padding: '12px 18px',
                   background: 'rgba(5,150,105,0.08)',
+                  border: '1px solid rgba(5,150,105,0.25)',
                   borderRadius: '8px',
                   color: 'var(--emerald)',
-                  marginBottom: '20px',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
                 }}
               >
-                {annSuccess}
+                <CheckCircle2 size={18} />
+                <span>{annSuccess}</span>
               </div>
             )}
 
-            <div className="card" style={{ maxWidth: '600px', padding: '28px' }}>
-              <form onSubmit={handlePostAnnouncement}>
-                <div className="form-group">
-                  <label className="form-label">Headline / Title</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Round 1 is now open for all students!"
-                    value={annTitle}
-                    onChange={(e) => setAnnTitle(e.target.value)}
-                    required
-                  />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', alignItems: 'start' }}>
+              {/* Form Card: Publish New or Edit Announcement */}
+              <div
+                id="announcement-editor"
+                className="card"
+                style={{
+                  padding: '28px',
+                  border: editingAnnouncement ? '2px solid var(--blue)' : undefined,
+                  boxShadow: editingAnnouncement ? '0 4px 20px rgba(37,99,235,0.15)' : undefined,
+                }}
+              >
+                {editingAnnouncement ? (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
+                          Edit Announcement
+                        </h2>
+                        <span className="badge badge--blue" style={{ fontSize: '0.75rem' }}>
+                          Editing ID: {editingAnnouncement.id.slice(0, 8)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditAnnouncement}
+                        className="btn btn--ghost btn--xs"
+                        title="Cancel editing"
+                      >
+                        <X size={16} />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveEditedAnnouncement}>
+                      <div className="form-group">
+                        <label className="form-label">Headline / Title</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editAnnTitle}
+                          onChange={(e) => setEditAnnTitle(e.target.value)}
+                          placeholder="e.g. Round 1 has been extended by 15 minutes"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Announcement Details</label>
+                        <textarea
+                          className="form-input"
+                          rows={5}
+                          value={editAnnBody}
+                          onChange={(e) => setEditAnnBody(e.target.value)}
+                          placeholder="Provide details, timing, or urgent notices..."
+                          required
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', margin: '16px 0' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={editAnnPinned}
+                            onChange={(e) => setEditAnnPinned(e.target.checked)}
+                          />
+                          <Pin size={15} style={{ color: editAnnPinned ? 'var(--violet)' : 'inherit' }} />
+                          <span>Pin to top of public landing page</span>
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={editAnnPublished}
+                            onChange={(e) => setEditAnnPublished(e.target.checked)}
+                          />
+                          <CheckCircle2 size={15} style={{ color: editAnnPublished ? 'var(--emerald)' : 'inherit' }} />
+                          <span>Visible to public (Published)</span>
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <button type="submit" className="btn btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Check size={16} />
+                          <span>Save Changes</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditAnnouncement}
+                          className="btn btn--secondary"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy)', marginBottom: '18px' }}>
+                      Publish Announcement
+                    </h2>
+
+                    <form onSubmit={handlePostAnnouncement}>
+                      <div className="form-group">
+                        <label className="form-label">Headline / Title</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Round 1 is now open for all students!"
+                          value={annTitle}
+                          onChange={(e) => setAnnTitle(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Announcement Details</label>
+                        <textarea
+                          className="form-input"
+                          rows={4}
+                          placeholder="Provide details, timing, or urgent notices..."
+                          value={annBody}
+                          onChange={(e) => setAnnBody(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div style={{ margin: '14px 0' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={annPinned}
+                            onChange={(e) => setAnnPinned(e.target.checked)}
+                          />
+                          <Pin size={15} style={{ color: annPinned ? 'var(--violet)' : 'inherit' }} />
+                          <span>Pin to top of public landing page</span>
+                        </label>
+                      </div>
+
+                      <button type="submit" className="btn btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Plus size={16} />
+                        <span>Publish to Landing Page</span>
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {/* Previous Announcements Column */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
+                    Previous Announcements ({announcements.length})
+                  </h2>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Announcement Details</label>
-                  <textarea
-                    className="form-input"
-                    rows={4}
-                    placeholder="Provide details, timing, or urgent notices..."
-                    value={annBody}
-                    onChange={(e) => setAnnBody(e.target.value)}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn--primary">
-                  Publish to Landing Page
-                </button>
-              </form>
+
+                {loadingAnnouncements && announcements.length === 0 ? (
+                  <div className="card" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    Loading announcements...
+                  </div>
+                ) : announcements.length === 0 ? (
+                  <div className="card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Megaphone size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontWeight: 600 }}>No announcements published yet.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
+                      Use the form on the left to broadcast your first notice.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {announcements.map((ann) => (
+                      <div
+                        key={ann.id}
+                        className={`card announcement-card ${ann.is_pinned ? 'announcement-card--pinned' : ''}`}
+                        style={{
+                          padding: '20px',
+                          borderLeftWidth: '4px',
+                          borderLeftColor: ann.is_pinned ? 'var(--violet)' : 'var(--blue)',
+                          boxShadow: editingAnnouncement?.id === ann.id ? '0 0 0 2px var(--blue)' : undefined,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
+                          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
+                            {ann.title}
+                          </h3>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                            {ann.is_pinned && (
+                              <span
+                                className="badge"
+                                style={{
+                                  background: 'rgba(124,58,237,0.12)',
+                                  color: '#7c3aed',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '0.72rem',
+                                  padding: '2px 8px',
+                                }}
+                              >
+                                <Pin size={11} />
+                                <span>Pinned</span>
+                              </span>
+                            )}
+                            {ann.is_published === false ? (
+                              <span className="badge badge--amber" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                                Draft
+                              </span>
+                            ) : (
+                              <span className="badge badge--emerald" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                                Live
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: '14px' }}>
+                          {ann.body}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '10px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            Published: {formatDateTime(ann.created_at)}
+                            {ann.updated_at && ann.updated_at !== ann.created_at && (
+                              <span> • Edited: {formatDateTime(ann.updated_at)}</span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditAnnouncement(ann)}
+                              className="btn btn--secondary btn--xs"
+                              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                              title="Edit this announcement"
+                            >
+                              <Edit2 size={13} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAnnouncement(ann.id, ann.title)}
+                              className="btn btn--danger btn--xs"
+                              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                              title="Delete this announcement"
+                            >
+                              <Trash2 size={13} />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

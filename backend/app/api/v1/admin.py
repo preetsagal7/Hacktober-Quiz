@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, desc, update, delete
 
@@ -25,7 +25,7 @@ from app.schemas.schemas import (
     DashboardStats, EventOut, EventUpdate, RoundOut, RoundUpdate,
     QuestionCreate, QuestionUpdate, QuestionAdminOut, AnswerOptionAdminOut,
     ParticipantOut, ParticipantListResponse, ParticipantImportResult,
-    RulesVersionOut, RulesVersionCreate, AnnouncementOut, AnnouncementCreate,
+    RulesVersionOut, RulesVersionCreate, AnnouncementOut, AnnouncementCreate, AnnouncementUpdate,
     MessageResponse, LeaderboardEntry, RoundLeaderboard,
     ParticipantScoreInfo, ParticipantEligibilityUpdate, AppealResolve
 )
@@ -354,6 +354,60 @@ async def export_participants(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=participants.csv"},
+    )
+
+
+@router.get("/export/excel")
+@router.get("/participants/export-excel")
+async def export_excel_report(
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate and download complete Excel report containing:
+    1. Overall Tournament Winners & Standings
+    2. All Participants Master Directory with all personal, academic details, and round breakdown
+    3. Dedicated sheets for each Round with scores, ranks, and winners/qualifiers
+    """
+    event_result = await db.execute(select(Event).where(Event.is_active == True))
+    event = event_result.scalar_one_or_none()
+    if not event:
+        event_result = await db.execute(select(Event))
+        event = event_result.scalars().first()
+
+    participants_result = await db.execute(select(Participant).order_by(Participant.usn))
+    participants = participants_result.scalars().all()
+
+    rounds_query = select(Round)
+    if event:
+        rounds_query = rounds_query.where(Round.event_id == event.id)
+    rounds_query = rounds_query.order_by(Round.round_number)
+    rounds_result = await db.execute(rounds_query)
+    rounds = rounds_result.scalars().all()
+
+    attempts_result = await db.execute(select(Attempt).order_by(desc(Attempt.score)))
+    attempts = attempts_result.scalars().all()
+
+    quals_result = await db.execute(select(Qualification).order_by(Qualification.round_id, Qualification.rank))
+    qualifications = quals_result.scalars().all()
+
+    from app.services.excel_exporter import generate_participants_and_winners_excel
+    buffer = generate_participants_and_winners_excel(event, participants, rounds, attempts, qualifications)
+
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"CyberQuiz_Participants_and_Winners_{timestamp_str}.xlsx"
+
+    await _audit(admin.id, "excel_report_exported", "system", None, db,
+                 details=json.dumps({"total_participants": len(participants), "rounds_count": len(rounds)}))
+    await db.commit()
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
 
 
@@ -1050,6 +1104,53 @@ async def create_announcement(
     await db.commit()
     await db.refresh(a)
     return AnnouncementOut.model_validate(a)
+
+
+@router.put("/announcements/{announcement_id}", response_model=AnnouncementOut)
+async def update_announcement(
+    announcement_id: str,
+    body: AnnouncementUpdate,
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Announcement).where(Announcement.id == announcement_id))
+    announcement = result.scalar_one_or_none()
+    if not announcement:
+        raise HTTPException(status_code=404, detail="Announcement not found.")
+
+    if body.title is not None:
+        announcement.title = body.title
+    if body.body is not None:
+        announcement.body = body.body
+    if body.is_pinned is not None:
+        announcement.is_pinned = body.is_pinned
+    if body.is_published is not None:
+        announcement.is_published = body.is_published
+
+    announcement.updated_at = datetime.now(timezone.utc)
+    await _audit(admin.id, "announcement_updated", "announcement", announcement_id, db,
+                 details=json.dumps({"title": announcement.title, "is_pinned": announcement.is_pinned}))
+    await db.commit()
+    await db.refresh(announcement)
+    return AnnouncementOut.model_validate(announcement)
+
+
+@router.delete("/announcements/{announcement_id}", response_model=MessageResponse)
+async def delete_announcement(
+    announcement_id: str,
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Announcement).where(Announcement.id == announcement_id))
+    announcement = result.scalar_one_or_none()
+    if not announcement:
+        raise HTTPException(status_code=404, detail="Announcement not found.")
+
+    await db.delete(announcement)
+    await _audit(admin.id, "announcement_deleted", "announcement", announcement_id, db,
+                 details=json.dumps({"title": announcement.title}))
+    await db.commit()
+    return MessageResponse(message="Announcement deleted successfully.")
 
 
 # ─── Appeals ───

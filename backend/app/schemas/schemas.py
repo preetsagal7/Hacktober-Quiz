@@ -395,7 +395,9 @@ class AnnouncementOut(BaseModel):
     title: str
     body: str
     is_pinned: bool
+    is_published: bool = True
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -405,6 +407,13 @@ class AnnouncementCreate(BaseModel):
     body: str = Field(..., min_length=1)
     is_pinned: bool = False
     is_published: bool = True
+
+
+class AnnouncementUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=300)
+    body: Optional[str] = Field(None, min_length=1)
+    is_pinned: Optional[bool] = None
+    is_published: Optional[bool] = None
 
 
 # ─── Appeals ───
