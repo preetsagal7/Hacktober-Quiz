@@ -169,6 +169,14 @@ export const reportViolation = async (
 };
 
 // ─── Admin API ───
+export const supabaseAdminVerify = async (email: string, accessToken: string): Promise<AdminLoginResponse> => {
+  const res = await api.post<AdminLoginResponse>('/auth/admin/supabase-verify', {
+    email,
+    access_token: accessToken,
+  });
+  return res.data;
+};
+
 export const adminLogin = async (adminId: string, password: string): Promise<AdminLoginResponse> => {
   const res = await api.post<AdminLoginResponse>('/auth/admin/login', { admin_id: adminId, password });
   return res.data;

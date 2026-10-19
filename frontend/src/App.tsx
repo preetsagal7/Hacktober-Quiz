@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { AdminLoginModal } from './components/AdminLoginModal';
@@ -10,9 +10,14 @@ import { ParticipantDashboardPage } from './pages/ParticipantDashboardPage';
 import { QuizArenaPage } from './pages/QuizArenaPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { supabase } from './services/supabase';
+import { supabaseAdminVerify } from './services/api';
+
+const AUTHORIZED_ADMIN_EMAIL = 'preetsagal7@gmail.com';
 
 export const App: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [participantUSN, setParticipantUSN] = useState<string | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
@@ -21,7 +26,29 @@ export const App: React.FC = () => {
     if (savedUsn) {
       setParticipantUSN(savedUsn);
     }
-  }, []);
+
+    // Auto-detect Magic Link sign-in from email redirect
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user?.email) {
+        if (session.user.email.toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase()) {
+          try {
+            const res = await supabaseAdminVerify(session.user.email, session.access_token);
+            localStorage.setItem('admin_token', res.access_token);
+            localStorage.setItem('admin_id', res.admin_id);
+            if (!window.location.pathname.startsWith('/admin')) {
+              navigate('/admin');
+            }
+          } catch (err) {
+            console.error('Failed to verify magic link session:', err);
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('participant_token');

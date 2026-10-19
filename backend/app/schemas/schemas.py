@@ -442,3 +442,9 @@ class DashboardStats(BaseModel):
     round_statuses: List[dict]
     recent_violations: int
     total_consents: int
+
+
+class SupabaseAdminVerifyRequest(BaseModel):
+    email: str
+    access_token: str
+

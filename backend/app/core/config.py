@@ -32,9 +32,14 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 1
 
-    # Admin Bootstrap
+    # Admin Credentials
     INITIAL_ADMIN_ID: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
+    ADMIN_GMAIL: str = "preetsagal7@gmail.com"
+
+    # Supabase Auth
+    SUPABASE_URL: str = "https://qjckcykrovgbfbuvezdwf.supabase.co"
+    SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqY2tjeWtyb3ZnZmJ1dmV6ZHdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzIxMjMsImV4cCI6MjEwNzk0ODEyM30.4pL_e_9Rcft9Kl4iMmTK20xPivLKk8BU5SHpAJ6OVIU"
 
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
