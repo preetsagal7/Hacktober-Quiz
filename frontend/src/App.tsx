@@ -27,21 +27,52 @@ export const App: React.FC = () => {
       setParticipantUSN(savedUsn);
     }
 
-    // Auto-detect Magic Link sign-in from email redirect
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user?.email) {
-        if (session.user.email.toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase()) {
-          try {
-            const res = await supabaseAdminVerify(session.user.email, session.access_token);
+    const handleAdminSession = async (session: any) => {
+      const userEmail = session?.user?.email;
+      if (userEmail && userEmail.toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase()) {
+        try {
+          const res = await supabaseAdminVerify(userEmail, session.access_token);
+          localStorage.setItem('admin_token', res.access_token);
+          localStorage.setItem('admin_id', res.admin_id);
+          if (window.location.hash) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          navigate('/admin');
+        } catch (err) {
+          console.error('Failed to verify magic link session:', err);
+        }
+      }
+    };
+
+    // 1. Check if token is in URL hash directly (from magic link redirect)
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hashToken = hashParams.get('access_token');
+      if (hashToken) {
+        supabaseAdminVerify(AUTHORIZED_ADMIN_EMAIL, hashToken)
+          .then((res) => {
             localStorage.setItem('admin_token', res.access_token);
             localStorage.setItem('admin_id', res.admin_id);
-            if (!window.location.pathname.startsWith('/admin')) {
-              navigate('/admin');
-            }
-          } catch (err) {
-            console.error('Failed to verify magic link session:', err);
-          }
-        }
+            window.history.replaceState(null, '', '/admin');
+            navigate('/admin');
+          })
+          .catch((err) => {
+            console.error('Hash token verification failed:', err);
+          });
+      }
+    }
+
+    // 2. Check getSession on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        handleAdminSession(session);
+      }
+    });
+
+    // 3. Listen for all auth state changes (INITIAL_SESSION, SIGNED_IN, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        handleAdminSession(session);
       }
     });
 
