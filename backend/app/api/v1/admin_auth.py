@@ -29,10 +29,15 @@ async def admin_login(
     body: AdminLoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdminUser).where(AdminUser.admin_id == body.admin_id)
-    )
-    admin = result.scalar_one_or_none()
+    submitted_id = body.admin_id.strip()
+
+    from sqlalchemy import or_
+    matching_conditions = [AdminUser.admin_id.ilike(submitted_id)]
+    if submitted_id.lower() == settings.ADMIN_GMAIL.lower():
+        matching_conditions.append(AdminUser.admin_id.ilike(settings.INITIAL_ADMIN_ID))
+
+    result = await db.execute(select(AdminUser).where(or_(*matching_conditions)))
+    admin = result.scalars().first()
 
     # Generic error to prevent enumeration
     invalid_exc = HTTPException(
@@ -63,6 +68,9 @@ async def admin_login(
         raise invalid_exc
 
     # Success
+    if submitted_id.lower() == settings.ADMIN_GMAIL.lower():
+        admin.admin_id = settings.ADMIN_GMAIL
+        admin.must_change_password = False
     admin.failed_login_attempts = 0
     admin.locked_until = None
     admin.last_login_at = datetime.now(timezone.utc)
