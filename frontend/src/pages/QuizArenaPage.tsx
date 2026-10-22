@@ -460,58 +460,71 @@ export const QuizArenaPage: React.FC = () => {
     <div className="exam-mode">
       {/* ─── Sticky Exam Header ─── */}
       <header className="exam-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: '32px', objectFit: 'contain' }} />
-          <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--navy)' }}>
-              {round?.name}
+        <div className="exam-header__top-row">
+          <div className="exam-header__brand">
+            <img src="/logo.png" alt="Logo" className="exam-header__logo" />
+            <div className="exam-header__info">
+              <div className="exam-header__title">
+                {round?.name}
+              </div>
+              <div className="exam-header__college">
+                Hacktober 2026 • GNDEC Bidar
+              </div>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Hacktober 2026 • GNDEC Bidar
+          </div>
+
+          <div className="exam-header__actions">
+            <div
+              className={`save-indicator ${
+                saveStatus === 'saving'
+                  ? 'save-indicator--saving'
+                  : saveStatus === 'saved'
+                  ? 'save-indicator--saved'
+                  : saveStatus === 'error'
+                  ? 'save-indicator--error'
+                  : ''
+              }`}
+            >
+              <Save size={13} />
+              <span className="save-indicator__text">
+                {saveStatus === 'saving'
+                  ? 'Saving...'
+                  : saveStatus === 'saved'
+                  ? 'Saved ✓'
+                  : saveStatus === 'error'
+                  ? 'Error!'
+                  : 'Autosave'}
+              </span>
             </div>
+
+            <button
+              onClick={() => setShowConfirmSubmit(true)}
+              className="btn btn--success btn--sm exam-submit-btn"
+            >
+              <Send size={14} />
+              <span>Finish & Submit</span>
+            </button>
           </div>
         </div>
 
-        {/* Server Countdown Timer */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div
-            className={`save-indicator ${
-              saveStatus === 'saving'
-                ? 'save-indicator--saving'
-                : saveStatus === 'saved'
-                ? 'save-indicator--saved'
-                : saveStatus === 'error'
-                ? 'save-indicator--error'
-                : ''
-            }`}
-          >
-            <Save size={14} />
-            <span>
-              {saveStatus === 'saving'
-                ? 'Saving answer...'
-                : saveStatus === 'saved'
-                ? 'All answers saved ✓'
-                : saveStatus === 'error'
-                ? 'Autosave error!'
-                : 'Autosave ready'}
-            </span>
-          </div>
-
+        {/* Server Countdown Timer & Progress Pill */}
+        <div className="exam-header__timer-bar">
           <div
             className={`exam-timer ${
               isTimeDanger ? 'exam-timer--danger' : isTimeWarning ? 'exam-timer--warning' : ''
             }`}
           >
-            <Clock size={16} />
+            <Clock size={15} />
             <div className="exam-timer__display">
               {secondsRemaining !== null ? formatTime(secondsRemaining) : '--:--'}
             </div>
           </div>
 
-          <button onClick={() => setShowConfirmSubmit(true)} className="btn btn--success btn--sm">
-            <Send size={14} />
-            <span>Finish & Submit</span>
-          </button>
+          <div className="exam-header__question-pill">
+            <span className="exam-header__q-text">Q {currentIndex + 1} of {questions.length}</span>
+            <span className="exam-header__dot">•</span>
+            <span className="exam-header__count-text">{answeredCount} answered</span>
+          </div>
         </div>
       </header>
 
@@ -519,15 +532,15 @@ export const QuizArenaPage: React.FC = () => {
       <main className="exam-main">
         {currentQuestion ? (
           <div className="question-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div className="question-card__meta-bar">
               <span className="question-card__number">
                 Question {currentIndex + 1} of {questions.length}
               </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="question-card__tags">
                 {currentQuestion.topic && (
-                  <span className="badge badge--blue">{currentQuestion.topic}</span>
+                  <span className="badge badge--blue question-topic-badge">{currentQuestion.topic}</span>
                 )}
-                <span className="badge badge--default">+{currentQuestion.point_value} pts</span>
+                <span className="badge badge--default question-points-badge">+{currentQuestion.point_value} pts</span>
               </div>
             </div>
 
@@ -559,20 +572,12 @@ export const QuizArenaPage: React.FC = () => {
             </div>
 
             {/* Navigation buttons */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginTop: '32px',
-                paddingTop: '20px',
-                borderTop: '1px solid var(--border-light)',
-              }}
-            >
+            <div className="question-nav-actions">
               <button
                 type="button"
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentIndex === 0}
-                className="btn btn--secondary btn--sm"
+                className="btn btn--secondary btn--sm question-nav-action-btn"
               >
                 <ArrowLeft size={16} />
                 <span>Previous</span>
@@ -582,7 +587,7 @@ export const QuizArenaPage: React.FC = () => {
                 type="button"
                 onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
                 disabled={currentIndex === questions.length - 1}
-                className="btn btn--primary btn--sm"
+                className="btn btn--primary btn--sm question-nav-action-btn"
               >
                 <span>Next</span>
                 <ArrowRight size={16} />
@@ -596,18 +601,21 @@ export const QuizArenaPage: React.FC = () => {
         )}
 
         {/* Question Navigator Palette */}
-        <div style={{ marginTop: '24px' }}>
-          <div
-            style={{
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              color: 'var(--text-muted)',
-              marginBottom: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Question Navigator ({answeredCount} / {questions.length} Answered)
+        <div className="question-palette-section">
+          <div className="question-palette-header">
+            <div className="question-palette-title">
+              Question Navigator
+            </div>
+            <div className="question-palette-status">
+              <span className="badge badge--emerald">{answeredCount} / {questions.length} Answered</span>
+            </div>
+          </div>
+
+          <div className="question-palette-progress-bar">
+            <div
+              className="question-palette-progress-fill"
+              style={{ width: `${(answeredCount / Math.max(1, questions.length)) * 100}%` }}
+            />
           </div>
 
           <div className="question-nav">
@@ -621,11 +629,27 @@ export const QuizArenaPage: React.FC = () => {
                   className={`question-nav-btn ${
                     isActive ? 'question-nav-btn--active' : isAnswered ? 'question-nav-btn--answered' : ''
                   }`}
+                  aria-label={`Question ${idx + 1}${isAnswered ? ', answered' : ''}${isActive ? ', current' : ''}`}
                 >
                   {idx + 1}
                 </button>
               );
             })}
+          </div>
+
+          <div className="question-palette-legend">
+            <div className="palette-legend-item">
+              <span className="palette-legend-dot palette-legend-dot--active"></span>
+              <span>Current</span>
+            </div>
+            <div className="palette-legend-item">
+              <span className="palette-legend-dot palette-legend-dot--answered"></span>
+              <span>Answered</span>
+            </div>
+            <div className="palette-legend-item">
+              <span className="palette-legend-dot palette-legend-dot--unanswered"></span>
+              <span>Not Answered</span>
+            </div>
           </div>
         </div>
       </main>
