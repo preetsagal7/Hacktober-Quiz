@@ -115,7 +115,7 @@ export const ParticipantDashboardPage: React.FC = () => {
     <div className="page-wrapper page-wrapper--wide">
       {/* ─── Participant Header ─── */}
       <div
-        className="card"
+        className="card participant-header-card"
         style={{
           padding: '28px 32px',
           marginBottom: '32px',
@@ -253,7 +253,7 @@ export const ParticipantDashboardPage: React.FC = () => {
         Competition Examination Rounds
       </h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+      <div className="dashboard-rounds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         {rounds.map((round) => {
           const isOpen = round.status === 'open';
           const isClosed = round.status === 'closed' || round.status === 'results_published';

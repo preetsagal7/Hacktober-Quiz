@@ -138,9 +138,9 @@ export const LandingPage: React.FC = () => {
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          <div className="competition-rounds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             {/* Round 1 */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card round-card--interactive" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge badge--blue">Round 1</span>
                 <span className="badge badge--emerald">All Participants</span>
@@ -151,7 +151,7 @@ export const LandingPage: React.FC = () => {
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', flex: 1 }}>
                 25 Multiple Choice Questions testing cybersecurity fundamentals, phishing prevention, authentication, password safety, and network basics.
               </p>
-              <div style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
+              <div className="round-stats-grid" style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
                 <div><strong>Time:</strong> 20 Mins</div>
                 <div><strong>Questions:</strong> 25 MCQs</div>
                 <div><strong>Max Score:</strong> 100 Pts</div>
@@ -163,7 +163,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Round 2 */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card round-card--interactive" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge badge--violet">Round 2</span>
                 <span className="badge badge--amber">Top 20 Qualifiers</span>
@@ -174,7 +174,7 @@ export const LandingPage: React.FC = () => {
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', flex: 1 }}>
                 15 In-depth Technical Questions on OWASP Top 10 vulnerabilities, cryptography, Linux command-line security, CVEs, and ethical hacking.
               </p>
-              <div style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
+              <div className="round-stats-grid" style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
                 <div><strong>Time:</strong> 20 Mins</div>
                 <div><strong>Questions:</strong> 15 MCQs</div>
                 <div><strong>Max Score:</strong> 150 Pts</div>
@@ -186,7 +186,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Round 3 */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card round-card--interactive" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge badge--cyan">Round 3</span>
                 <span className="badge badge--crimson">Grand Finale</span>
@@ -197,7 +197,7 @@ export const LandingPage: React.FC = () => {
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', flex: 1 }}>
                 10 Advanced Scenario & Incident Response questions evaluating blockchain security, smart contract vulnerabilities, and forensic analysis.
               </p>
-              <div style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
+              <div className="round-stats-grid" style={{ margin: '16px 0', borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
                 <div><strong>Time:</strong> 30 Mins</div>
                 <div><strong>Questions:</strong> 10 Scenarios</div>
                 <div><strong>Max Score:</strong> 200 Pts</div>
@@ -211,8 +211,8 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ─── Schedule (Phase 16) ─── */}
-        <section style={{ margin: '60px 0' }}>
-          <div className="card card--glass" style={{ padding: '36px' }}>
+        <section style={{ margin: '60px 0' }} className="schedule-section">
+          <div className="card card--glass schedule-card-container" style={{ padding: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
               <Clock size={24} color="var(--blue)" />
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
@@ -220,7 +220,7 @@ export const LandingPage: React.FC = () => {
               </h2>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+            <div className="schedule-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: 'var(--border-light)' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--electric)' }}>10 Mins</div>
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>Check-in & Verification</div>

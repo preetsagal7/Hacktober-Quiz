@@ -62,7 +62,7 @@ export const LeaderboardPage: React.FC = () => {
       </div>
 
       {/* ─── Round Selector Tabs ─── */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '32px' }}>
+      <div className="leaderboard-round-tabs">
         {rounds.map((r) => (
           <button
             key={r.id}
