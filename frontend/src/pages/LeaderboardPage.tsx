@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Award, Trophy, Medal, AlertCircle, Clock } from 'lucide-react';
 import { getPublicRounds, getPublicLeaderboard } from '../services/api';
 import { Round, RoundLeaderboard } from '../types';
+import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal';
+import { CyberCanvas } from '../components/CyberCanvas';
 
 export const LeaderboardPage: React.FC = () => {
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -9,6 +11,10 @@ export const LeaderboardPage: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<RoundLeaderboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const headerRef = useScrollReveal({ threshold: 0.1 });
+  const tableRef = useScrollReveal({ threshold: 0.05 });
+  const rowsRef = useStaggerReveal('tr', { staggerMs: 40, threshold: 0.05 });
 
   useEffect(() => {
     getPublicRounds()
@@ -36,8 +42,17 @@ export const LeaderboardPage: React.FC = () => {
   }, [selectedRoundId]);
 
   return (
-    <div className="page-wrapper page-wrapper--wide">
-      <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+    <div className="page-wrapper page-wrapper--wide page-with-cyber-bg" style={{ position: 'relative' }}>
+      {/* Subtle background canvas */}
+      <div className="page-cyber-bg" aria-hidden="true">
+        <CyberCanvas variant="nodes" nodeCount={22} />
+      </div>
+
+      <div
+        ref={headerRef as React.RefObject<HTMLDivElement>}
+        className="reveal-fade-up"
+        style={{ textAlign: 'center', marginBottom: '36px' }}
+      >
         <div
           style={{
             width: '56px',
@@ -50,11 +65,12 @@ export const LeaderboardPage: React.FC = () => {
             margin: '0 auto 16px',
             color: 'var(--blue)',
           }}
+          className="icon-float"
         >
           <Trophy size={30} />
         </div>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy)' }}>
-          Competition Leaderboard & Results
+        <h1 className="section-heading-glow" style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy)' }}>
+          Competition Leaderboard &amp; Results
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
           Hacktober 2026 • Official Standing • Guru Nanak Dev Engineering College, Bidar
@@ -62,12 +78,12 @@ export const LeaderboardPage: React.FC = () => {
       </div>
 
       {/* ─── Round Selector Tabs ─── */}
-      <div className="leaderboard-round-tabs">
+      <div className="leaderboard-round-tabs reveal-fade-up" style={{ animationDelay: '0.15s' }}>
         {rounds.map((r) => (
           <button
             key={r.id}
             onClick={() => setSelectedRoundId(r.id)}
-            className={`btn ${selectedRoundId === r.id ? 'btn--primary' : 'btn--secondary'}`}
+            className={`btn btn-cyber ${selectedRoundId === r.id ? 'btn--primary' : 'btn--secondary'}`}
           >
             <span>Round {r.round_number}: {r.name.split('—')[1] || r.name}</span>
           </button>
@@ -81,7 +97,7 @@ export const LeaderboardPage: React.FC = () => {
         </div>
       ) : error ? (
         <div
-          className="card"
+          className="card cyber-card reveal-fade-up"
           style={{
             padding: '40px',
             textAlign: 'center',
@@ -99,8 +115,14 @@ export const LeaderboardPage: React.FC = () => {
           </p>
         </div>
       ) : leaderboard && leaderboard.entries.length > 0 ? (
-        <div className="data-table-wrapper">
-          <table className="data-table">
+        <div
+          ref={tableRef as React.RefObject<HTMLDivElement>}
+          className="data-table-wrapper reveal-slide-up"
+        >
+          <table
+            ref={rowsRef as React.RefObject<HTMLTableElement>}
+            className="data-table"
+          >
             <thead>
               <tr>
                 <th style={{ width: '80px' }}>Rank</th>
@@ -113,7 +135,7 @@ export const LeaderboardPage: React.FC = () => {
             </thead>
             <tbody>
               {leaderboard.entries.map((entry) => (
-                <tr key={entry.participant_id}>
+                <tr key={entry.participant_id} className="table-row-reveal">
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {entry.rank === 1 ? (
@@ -145,7 +167,7 @@ export const LeaderboardPage: React.FC = () => {
           </table>
         </div>
       ) : (
-        <div className="card" style={{ padding: '40px', textAlign: 'center' }}>
+        <div className="card cyber-card reveal-fade-up" style={{ padding: '40px', textAlign: 'center' }}>
           No entries found for this round yet.
         </div>
       )}

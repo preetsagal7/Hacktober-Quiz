@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, ArrowRight, AlertCircle, User, Mail, GraduationCap, Building } from 'lucide-react';
 import { participantEntry } from '../services/api';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import { CyberCanvas } from '../components/CyberCanvas';
 
 interface ParticipantEntryPageProps {
   onLoginSuccess: (usn: string) => void;
@@ -16,6 +18,8 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
   const [collegeName, setCollegeName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const cardRef = useScrollReveal({ threshold: 0.05 });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,8 +79,20 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
   };
 
   return (
-    <div className="page-wrapper page-wrapper--narrow">
-      <div className="card" style={{ padding: '40px', marginTop: '30px' }}>
+    <div
+      className="page-wrapper page-wrapper--narrow page-with-cyber-bg"
+      style={{ position: 'relative' }}
+    >
+      {/* Subtle background canvas */}
+      <div className="page-cyber-bg" aria-hidden="true">
+        <CyberCanvas variant="binary" nodeCount={20} />
+      </div>
+
+      <div
+        ref={cardRef as React.RefObject<HTMLDivElement>}
+        className="card cyber-card entry-card-enhanced reveal-slide-up"
+        style={{ padding: '40px', marginTop: '30px' }}
+      >
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div
             style={{
@@ -90,10 +106,11 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
               margin: '0 auto 16px',
               color: 'var(--blue)',
             }}
+            className="icon-float icon-shield-glow"
           >
             <Shield size={32} />
           </div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--navy)', marginBottom: '8px' }}>
+          <h1 className="section-heading-glow" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--navy)', marginBottom: '8px' }}>
             Participant Portal
           </h1>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
@@ -103,6 +120,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
 
         {error && (
           <div
+            className="reveal-fade-up"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -122,14 +140,14 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div className="form-group">
+          <div className="form-group form-group--animated">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <User size={15} color="var(--blue)" />
               <span>Full Name</span>
             </label>
             <input
               type="text"
-              className="form-input"
+              className="form-input form-input--cyber"
               placeholder="e.g. Rahul Sharma"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -138,7 +156,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group form-group--animated">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Mail size={15} color="var(--blue)" />
               <span>Email Address</span>
@@ -146,21 +164,21 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
             </label>
             <input
               type="email"
-              className="form-input"
+              className="form-input form-input--cyber"
               placeholder="e.g. rahul.sharma@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group form-group--animated">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Shield size={15} color="var(--blue)" />
               <span>University Seat Number (USN) / College Roll Number</span>
             </label>
             <input
               type="text"
-              className="form-input"
+              className="form-input form-input--cyber"
               placeholder="e.g. 3GN22CS001"
               value={usn}
               onChange={(e) => setUsn(e.target.value.toUpperCase())}
@@ -172,29 +190,29 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group form-group--animated">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <GraduationCap size={15} color="var(--blue)" />
               <span>Department / Branch</span>
             </label>
             <input
               type="text"
-              className="form-input"
-              placeholder="e.g. CSE - IoT & Cybersecurity"
+              className="form-input form-input--cyber"
+              placeholder="e.g. CSE - IoT &amp; Cybersecurity"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               required
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group form-group--animated">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Building size={15} color="var(--blue)" />
               <span>College Name</span>
             </label>
             <input
               type="text"
-              className="form-input"
+              className="form-input form-input--cyber"
               placeholder="e.g. Guru Nanak Dev Engineering College, Bidar"
               value={collegeName}
               onChange={(e) => setCollegeName(e.target.value)}
@@ -204,7 +222,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
 
           <button
             type="submit"
-            className="btn btn--primary btn--lg btn--full"
+            className="btn btn--primary btn--lg btn--full btn-cyber"
             disabled={loading}
             style={{ marginTop: '8px' }}
           >
@@ -220,7 +238,7 @@ export const ParticipantEntryPage: React.FC<ParticipantEntryPageProps> = ({ onLo
         </form>
 
         <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border-light)', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          Organized by Department of CSE – IoT & Cybersecurity, GNDEC Bidar
+          Organized by Department of CSE – IoT &amp; Cybersecurity, GNDEC Bidar
         </div>
       </div>
     </div>

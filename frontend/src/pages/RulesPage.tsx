@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, ArrowRight, AlertTriangle } from 'lucide-react';
 import { getPublicRules } from '../services/api';
 import { RulesVersion } from '../types';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import { CyberCanvas } from '../components/CyberCanvas';
 
 export const RulesPage: React.FC = () => {
   const [rules, setRules] = useState<RulesVersion | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const headerRef = useScrollReveal({ threshold: 0.1 });
+  const cardRef = useScrollReveal({ threshold: 0.08 });
 
   useEffect(() => {
     getPublicRules()
@@ -16,8 +21,17 @@ export const RulesPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="page-wrapper page-wrapper--narrow">
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+    <div className="page-wrapper page-wrapper--narrow page-with-cyber-bg" style={{ position: 'relative' }}>
+      {/* Subtle background canvas */}
+      <div className="page-cyber-bg" aria-hidden="true">
+        <CyberCanvas variant="circuit" nodeCount={16} />
+      </div>
+
+      <div
+        ref={headerRef as React.RefObject<HTMLDivElement>}
+        className="reveal-fade-up"
+        style={{ textAlign: 'center', marginBottom: '32px' }}
+      >
         <div
           style={{
             width: '56px',
@@ -30,18 +44,23 @@ export const RulesPage: React.FC = () => {
             margin: '0 auto 16px',
             color: 'var(--blue)',
           }}
+          className="icon-float"
         >
           <ShieldCheck size={30} />
         </div>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy)' }}>
-          Official Competition Rules & Policy
+        <h1 className="section-heading-glow" style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy)' }}>
+          Official Competition Rules &amp; Policy
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
           Hacktober 2026 • Guru Nanak Dev Engineering College, Bidar
         </p>
       </div>
 
-      <div className="card" style={{ padding: '36px' }}>
+      <div
+        ref={cardRef as React.RefObject<HTMLDivElement>}
+        className="card reveal-slide-up cyber-card"
+        style={{ padding: '36px' }}
+      >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <div className="loading-spinner"></div>
@@ -57,7 +76,7 @@ export const RulesPage: React.FC = () => {
         )}
 
         <div style={{ marginTop: '36px', paddingTop: '24px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'center' }}>
-          <Link to="/entry" className="btn btn--primary btn--lg">
+          <Link to="/entry" className="btn btn--primary btn--lg btn-cyber">
             <span>Proceed to Participant Login</span>
             <ArrowRight size={18} />
           </Link>
