@@ -348,15 +348,17 @@ export const AdminDashboardPage: React.FC = () => {
   const handleToggleEligibility = async (p: Participant) => {
     const nextStatus = !p.is_eligible;
     const action = nextStatus ? 'Restore' : 'Revoke';
-    if (!confirm(`Are you sure you want to ${action.toLowerCase()} examination access for USN: ${p.usn}?`)) return;
-    const reason = nextStatus ? 'Re-enabled by admin' : 'Access revoked by committee';
+    if (!confirm(`Are you sure you want to ${action.toLowerCase()} examination access for USN: ${p.usn}?${nextStatus ? ' This will allow the student to give the test again.' : ''}`)) return;
+    const reason = nextStatus ? 'Re-enabled by admin (granted retake)' : 'Access revoked by committee';
     try {
       await updateParticipantEligibility(p.id, nextStatus, reason);
-      setParticipants(
-        participants.map((item) => (item.id === p.id ? { ...item, is_eligible: nextStatus } : item))
-      );
+      await loadParticipants(partPage, partSearch);
       getAdminDashboard().then(setStats);
-      alert(`Access has been ${nextStatus ? 'restored' : 'revoked'} for USN ${p.usn}.`);
+      alert(
+        nextStatus
+          ? `Access has been restored for ${p.name ? `${p.name} (${p.usn})` : p.usn}. The participant can now give the test again.`
+          : `Access has been revoked for ${p.name ? `${p.name} (${p.usn})` : p.usn}.`
+      );
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to update participant eligibility.');
     }
@@ -1440,6 +1442,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <tr>
                     <th>Timestamp</th>
                     <th>Participant USN</th>
+                    <th>Participant Name</th>
                     <th>Violation Event</th>
                     <th>Strict Termination</th>
                   </tr>
@@ -1449,11 +1452,15 @@ export const AdminDashboardPage: React.FC = () => {
                     const timeStr = v.received_at_server || v.received_at;
                     const dateFormatted = timeStr ? new Date(timeStr).toLocaleString() : 'Just now';
                     const usnVal = v.participant_usn || v.usn || 'N/A';
+                    const nameVal = v.participant_name || v.name || '—';
                     const isTerm = Boolean(v.resulted_in_termination ?? v.terminated);
                     return (
                       <tr key={v.id}>
                         <td>{dateFormatted}</td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{usnVal}</td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: 'var(--navy)' }}>{nameVal}</span>
+                        </td>
                         <td>
                           <span className="badge badge--crimson">{v.violation_type}</span>
                         </td>
@@ -1469,7 +1476,7 @@ export const AdminDashboardPage: React.FC = () => {
                   })}
                   {violations.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                         No violations recorded.
                       </td>
                     </tr>

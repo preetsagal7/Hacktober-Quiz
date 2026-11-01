@@ -5,7 +5,7 @@ results publication, audit logs, appeals, certificates.
 import csv
 import io
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
@@ -188,6 +188,65 @@ async def list_participants(
     )
 
 
+async def _restore_participant_attempts(
+    participant_id: str,
+    admin_username: str,
+    reason: Optional[str],
+    db: AsyncSession,
+):
+    """When an admin restores a participant's access, reset any terminated/completed attempts so they can retake the test."""
+    att_res = await db.execute(
+        select(Attempt).where(Attempt.participant_id == participant_id)
+    )
+    attempts = att_res.scalars().all()
+    now = datetime.now(timezone.utc)
+    for att in attempts:
+        r_res = await db.execute(select(Round).where(Round.id == att.round_id))
+        round_obj = r_res.scalar_one_or_none()
+        duration_mins = round_obj.duration_minutes if round_obj else 30
+
+        att.status = AttemptStatus.IN_PROGRESS
+        att.is_exception_restart = True
+        att.exception_reason = reason or f"Access restored by admin ({admin_username})"
+        att.score = None
+        att.correct_count = 0
+        att.incorrect_count = 0
+        att.unanswered_count = 0
+        att.submitted_at = None
+        att.finalized_at = None
+        att.termination_reason = None
+        att.started_at = now
+        att.deadline_at = now + timedelta(minutes=duration_mins)
+
+        # Reset previously saved answers to None so participant starts with a clean slate
+        await db.execute(
+            update(Answer)
+            .where(Answer.attempt_id == att.id)
+            .values(
+                selected_option_id=None,
+                is_correct=None,
+                points_awarded=None,
+                client_saved_at=None,
+            )
+        )
+
+    # Clear disqualification from Qualification table if any
+    await db.execute(
+        delete(Qualification).where(Qualification.participant_id == participant_id)
+    )
+
+    # Auto-resolve any pending appeals from this participant
+    app_res = await db.execute(
+        select(Appeal).where(
+            and_(Appeal.participant_id == participant_id, Appeal.status == AppealStatus.PENDING)
+        )
+    )
+    for app in app_res.scalars().all():
+        app.status = AppealStatus.RESOLVED
+        app.admin_response = "Access restored by administrator. You may retake the test."
+        app.resolved_at = now
+
+
 @router.put("/participants/{participant_id}/eligibility", response_model=MessageResponse)
 async def update_participant_eligibility(
     participant_id: str,
@@ -205,13 +264,16 @@ async def update_participant_eligibility(
     participant.ineligibility_reason = body.reason if not body.is_eligible else None
     if not body.is_eligible:
         participant.session_token = None
+    else:
+        await _restore_participant_attempts(participant_id, admin.username, body.reason, db)
 
     await _audit(admin.id, "participant_eligibility_updated", "participant", participant_id, db,
                  details=json.dumps({"is_eligible": body.is_eligible, "reason": body.reason}))
     await db.commit()
     return MessageResponse(
-        message=f"Participant {participant.usn} eligibility updated to {'eligible' if body.is_eligible else 'revoked'}."
+        message=f"Participant {participant.usn} eligibility updated to {'eligible (test retake granted)' if body.is_eligible else 'revoked'}."
     )
+
 
 
 @router.delete("/participants/{participant_id}", response_model=MessageResponse)
@@ -327,8 +389,13 @@ async def set_eligibility(
     if not participant:
         raise HTTPException(status_code=404, detail="Participant not found.")
     participant.is_eligible = eligible
-    if not eligible and reason:
-        participant.ineligibility_reason = reason
+    if not eligible:
+        if reason:
+            participant.ineligibility_reason = reason
+        participant.session_token = None
+    else:
+        participant.ineligibility_reason = None
+        await _restore_participant_attempts(participant_id, admin.username, reason, db)
     await _audit(admin.id, "eligibility_changed", "participant", participant_id, db,
                  details=json.dumps({"eligible": eligible, "reason": reason}))
     await db.commit()
@@ -1228,7 +1295,7 @@ async def list_violations(
 ):
     offset = (page - 1) * page_size
     result = await db.execute(
-        select(Violation, Participant).join(
+        select(Violation, Participant).outerjoin(
             Participant, Violation.participant_id == Participant.id
         ).order_by(desc(Violation.received_at_server)).offset(offset).limit(page_size)
     )
@@ -1240,11 +1307,11 @@ async def list_violations(
         "items": [
             {
                 "id": v.id,
-                "usn": p.usn,
-                "participant_usn": p.usn,
-                "name": p.name,
-                "participant_name": p.name,
-                "violation_type": v.violation_type.value,
+                "usn": p.usn if p else "N/A",
+                "participant_usn": p.usn if p else "N/A",
+                "name": (p.name if p and p.name else None) or (p.usn if p else "—"),
+                "participant_name": (p.name if p and p.name else None) or (p.usn if p else "—"),
+                "violation_type": v.violation_type.value if hasattr(v.violation_type, "value") else str(v.violation_type),
                 "received_at": v.received_at_server.isoformat() if v.received_at_server else None,
                 "received_at_server": v.received_at_server.isoformat() if v.received_at_server else None,
                 "terminated": v.resulted_in_termination,

@@ -159,6 +159,38 @@ async def start_attempt(
                 server_time=now,
             )
         elif existing.status in (AttemptStatus.SUBMITTED, AttemptStatus.TERMINATED, AttemptStatus.TIMED_OUT):
+            # If access was restored or exception granted by admin, allow student to take test again
+            if existing.is_exception_restart and participant.is_eligible:
+                existing.status = AttemptStatus.IN_PROGRESS
+                existing.score = None
+                existing.correct_count = 0
+                existing.incorrect_count = 0
+                existing.unanswered_count = 0
+                existing.submitted_at = None
+                existing.finalized_at = None
+                existing.termination_reason = None
+                existing.started_at = now
+                existing.deadline_at = now + timedelta(minutes=round_.duration_minutes)
+                await db.execute(
+                    update(Answer)
+                    .where(Answer.attempt_id == existing.id)
+                    .values(
+                        selected_option_id=None,
+                        is_correct=None,
+                        points_awarded=None,
+                        client_saved_at=None,
+                    )
+                )
+                await db.commit()
+                questions = await _get_attempt_questions(existing, round_, db)
+                return StartAttemptResponse(
+                    attempt_id=existing.id,
+                    round_id=round_id,
+                    deadline_at=existing.deadline_at,
+                    questions=questions,
+                    server_time=now,
+                )
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"You have already completed this test for USN {participant.usn} (Status: {existing.status.value}). Only one test attempt is permitted per USN.",
