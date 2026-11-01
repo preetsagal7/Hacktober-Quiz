@@ -38,6 +38,14 @@ export const LandingPage: React.FC = () => {
           <div className="hero__orb hero__orb--1"></div>
           <div className="hero__orb hero__orb--2"></div>
           <div className="hero__orb hero__orb--3"></div>
+          <div className="hero__orb hero__orb--4"></div>
+          <div className="hero__ambient-glow"></div>
+          <div className="hero__particle hero__particle--1"></div>
+          <div className="hero__particle hero__particle--2"></div>
+          <div className="hero__particle hero__particle--3"></div>
+          <div className="hero__particle hero__particle--4"></div>
+          <div className="hero__particle hero__particle--5"></div>
+          <div className="hero__particle hero__particle--6"></div>
           <div className="hero__grid"></div>
         </div>
 
