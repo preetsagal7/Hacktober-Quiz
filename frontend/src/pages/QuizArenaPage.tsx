@@ -11,6 +11,7 @@ import {
   Save,
   Send,
   Lock,
+  Tag,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -500,9 +501,11 @@ export const QuizArenaPage: React.FC = () => {
             <button
               onClick={() => setShowConfirmSubmit(true)}
               className="btn btn--success btn--sm exam-submit-btn"
+              title="Finish & Submit Exam"
             >
               <Send size={14} />
-              <span>Finish & Submit</span>
+              <span className="exam-submit-btn__label-full">Finish & Submit</span>
+              <span className="exam-submit-btn__label-short">Submit</span>
             </button>
           </div>
         </div>
@@ -526,6 +529,14 @@ export const QuizArenaPage: React.FC = () => {
             <span className="exam-header__count-text">{answeredCount} answered</span>
           </div>
         </div>
+
+        {/* Header Progress Track */}
+        <div className="exam-header__progress-track">
+          <div
+            className="exam-header__progress-fill"
+            style={{ width: `${(answeredCount / Math.max(1, questions.length)) * 100}%` }}
+          />
+        </div>
       </header>
 
       {/* ─── Main Question Content ─── */}
@@ -533,15 +544,20 @@ export const QuizArenaPage: React.FC = () => {
         {currentQuestion ? (
           <div className="question-card">
             <div className="question-card__meta-bar">
-              <span className="question-card__number">
-                Question {currentIndex + 1} of {questions.length}
-              </span>
-              <div className="question-card__tags">
-                {currentQuestion.topic && (
-                  <span className="badge badge--blue question-topic-badge">{currentQuestion.topic}</span>
-                )}
+              <div className="question-card__meta-header">
+                <span className="question-card__number">
+                  Question {currentIndex + 1} of {questions.length}
+                </span>
                 <span className="badge badge--default question-points-badge">+{currentQuestion.point_value} pts</span>
               </div>
+              {currentQuestion.topic && (
+                <div className="question-card__topic-row">
+                  <span className="badge badge--blue question-topic-badge">
+                    <Tag size={12} className="question-topic-icon" />
+                    <span>{currentQuestion.topic}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="question-card__text">{currentQuestion.question_text}</div>
