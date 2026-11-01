@@ -265,7 +265,7 @@ async def update_participant_eligibility(
     if not body.is_eligible:
         participant.session_token = None
     else:
-        await _restore_participant_attempts(participant_id, admin.username, body.reason, db)
+        await _restore_participant_attempts(participant_id, admin.admin_id, body.reason, db)
 
     await _audit(admin.id, "participant_eligibility_updated", "participant", participant_id, db,
                  details=json.dumps({"is_eligible": body.is_eligible, "reason": body.reason}))
@@ -395,7 +395,7 @@ async def set_eligibility(
         participant.session_token = None
     else:
         participant.ineligibility_reason = None
-        await _restore_participant_attempts(participant_id, admin.username, reason, db)
+        await _restore_participant_attempts(participant_id, admin.admin_id, reason, db)
     await _audit(admin.id, "eligibility_changed", "participant", participant_id, db,
                  details=json.dumps({"eligible": eligible, "reason": reason}))
     await db.commit()
