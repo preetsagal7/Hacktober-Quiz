@@ -46,6 +46,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor — handle expired/invalid admin sessions globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isAdminRequest =
+      error.config?.url?.startsWith('/admin') ||
+      error.config?.url?.startsWith('/auth/admin');
+    if (error.response?.status === 401 && isAdminRequest) {
+      const wasLoggedIn = Boolean(localStorage.getItem('admin_token'));
+      localStorage.removeItem('admin_token');
+      if (wasLoggedIn) {
+        // Show a brief message before redirecting so the admin knows what happened
+        alert('Your admin session has expired. Please log in again.');
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ─── Public API ───
 export const getPublicEvent = async (): Promise<EventInfo> => {
   const res = await api.get<EventInfo>('/public/event');
