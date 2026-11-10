@@ -290,6 +290,18 @@ export const QuizArenaPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            <img
+              src="/logo.png"
+              alt="Hacktober 2026 Logo"
+              style={{
+                width: '48px',
+                height: '48px',
+                objectFit: 'contain',
+                borderRadius: '50%',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                flexShrink: 0,
+              }}
+            />
           </div>
 
           <div className="modal__body">
@@ -349,7 +361,21 @@ export const QuizArenaPage: React.FC = () => {
   if (violationTerminated) {
     return (
       <div className="violation-modal">
-        <div className="violation-modal__card">
+        <div className="violation-modal__card" style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+            <img
+              src="/logo.png"
+              alt="Hacktober 2026 Logo"
+              style={{
+                width: '46px',
+                height: '46px',
+                objectFit: 'contain',
+                borderRadius: '50%',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              }}
+            />
+          </div>
+
           <div
             style={{
               width: '64px',
@@ -401,7 +427,21 @@ export const QuizArenaPage: React.FC = () => {
   if (submissionResult) {
     return (
       <div className="page-wrapper page-wrapper--narrow">
-        <div className="card" style={{ padding: '40px', marginTop: '40px', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '40px', marginTop: '40px', textAlign: 'center', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: '24px', right: '24px' }}>
+            <img
+              src="/logo.png"
+              alt="Hacktober 2026 Logo"
+              style={{
+                width: '52px',
+                height: '52px',
+                objectFit: 'contain',
+                borderRadius: '50%',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              }}
+            />
+          </div>
+
           <div
             style={{
               width: '72px',
